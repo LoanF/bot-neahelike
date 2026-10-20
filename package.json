@@ -1,0 +1,42 @@
+{
+  "name": "bot-neahelike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsup",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "test": "vitest run",
+    "db:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > src/db/database.types.ts"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "pino": "^10.4.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "eslint": "^10.13.0",
+    "pino-pretty": "^13.2.0",
+    "supabase": "^2.121.0",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "supabase"
+    ]
+  }
+}
