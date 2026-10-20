@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeHexColor, parseBoolean, parseSnowflake, tokenize } from "@/core/args";
+import { normalizeChoice, normalizeHexColor, parseBoolean, parseSnowflake, tokenize, tokenizeWithIndex } from "@/core/args";
 
 describe("tokenize", () => {
   it("découpe sur les espaces", () => {
@@ -36,5 +36,26 @@ describe("normalizeHexColor", () => {
     expect(normalizeHexColor("D1A64A")).toBe("#d1a64a");
     expect(normalizeHexColor("#1a150f")).toBe("#1a150f");
     expect(normalizeHexColor("#zzz")).toBeNull();
+  });
+});
+
+describe("tokenizeWithIndex", () => {
+  it("donne la position de chaque argument", () => {
+    const line = "message definir bienvenue Salut {user}\nBonne route.";
+    const tokens = tokenizeWithIndex(line);
+    expect(line.slice(tokens[3]!.index)).toBe("Salut {user}\nBonne route.");
+  });
+});
+
+describe("normalizeChoice", () => {
+  const choices = [
+    { name: "En ligne", value: "online" },
+    { name: "Absent", value: "idle" },
+  ];
+
+  it("reconnaît la valeur ou le libellé", () => {
+    expect(normalizeChoice(choices, "IDLE")).toBe("idle");
+    expect(normalizeChoice(choices, "en ligne")).toBe("online");
+    expect(normalizeChoice(choices, "occupé")).toBeNull();
   });
 });

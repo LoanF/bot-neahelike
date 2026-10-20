@@ -1,9 +1,17 @@
+export interface Token {
+  value: string;
+  /** Position du début de l'argument dans la ligne, pour reprendre le texte brut d'une option « reste ». */
+  index: number;
+}
+
 /** Découpe une ligne de commande en arguments ; les guillemets regroupent plusieurs mots. */
-export function tokenize(input: string): string[] {
-  const tokens: string[] = [];
+export function tokenizeWithIndex(input: string): Token[] {
   const pattern = /"([^"]*)"|«\s*([^»]*?)\s*»|(\S+)/g;
-  for (const match of input.matchAll(pattern)) tokens.push(match[1] ?? match[2] ?? match[3] ?? "");
-  return tokens;
+  return [...input.matchAll(pattern)].map(match => ({ value: match[1] ?? match[2] ?? match[3] ?? "", index: match.index }));
+}
+
+export function tokenize(input: string): string[] {
+  return tokenizeWithIndex(input).map(token => token.value);
 }
 
 /** Extrait un identifiant Discord d'une mention (`<@123>`, `<@!123>`, `<@&123>`, `<#123>`) ou d'un identifiant brut. */
@@ -34,4 +42,10 @@ export function normalizeHexColor(input: string): string | null {
 
 export function hexToInt(hex: string): number {
   return Number.parseInt(hex.replace("#", ""), 16);
+}
+
+/** Valeur d'un choix fixe, reconnue par sa valeur ou son libellé, sans tenir compte de la casse. */
+export function normalizeChoice(choices: { name: string; value: string }[], raw: string): string | null {
+  const key = raw.toLowerCase();
+  return choices.find(choice => choice.value.toLowerCase() === key || choice.name.toLowerCase() === key)?.value ?? null;
 }
