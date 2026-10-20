@@ -63,12 +63,13 @@ function goButton(view: PanelView, target: string, label = "Retour") {
   return button(id(view, "go", ...target.split(":")), label);
 }
 
+/** Menu des sections. Les menus de navigation portent `go:nav` ou `go:pick` : Discord refuse deux composants au même identifiant. */
 function navigation(view: PanelView, current: string): Row {
   const root = current.split(":")[0]!;
   const section = SECTION_OF[root] ?? root;
   return row(
     new StringSelectMenuBuilder()
-      .setCustomId(id(view, "go"))
+      .setCustomId(id(view, "go", "nav"))
       .setPlaceholder("Choisir une section")
       .addOptions(SECTIONS.map(item => ({ ...item, default: item.value === section }))),
   );
@@ -134,7 +135,7 @@ function modulesView(view: PanelView): Payload {
       navigation(view, "modules"),
       row(
         new StringSelectMenuBuilder()
-          .setCustomId(id(view, "go"))
+          .setCustomId(id(view, "go", "pick"))
           .setPlaceholder("Régler un module")
           .addOptions(getRegistry().modules.map(module => ({ label: module.label, value: `module:${module.id}`, description: module.description.slice(0, 100) }))),
       ),
@@ -201,7 +202,7 @@ function levelsView(view: PanelView): Payload {
         ? [
             row(
               new StringSelectMenuBuilder()
-                .setCustomId(id(view, "go"))
+                .setCustomId(id(view, "go", "pick"))
                 .setPlaceholder("Régler un niveau")
                 .addOptions(levels.map(level => ({ label: `${level.name} (poids ${level.weight})`, value: `level:${level.id}` }))),
             ),
@@ -259,7 +260,7 @@ function commandsView(view: PanelView): Payload {
       navigation(view, "commands"),
       row(
         new StringSelectMenuBuilder()
-          .setCustomId(id(view, "go"))
+          .setCustomId(id(view, "go", "pick"))
           .setPlaceholder("Choisir un module")
           .addOptions(modules.map(module => ({ label: module.label, value: `commands:${module.id}`, description: `${module.commands!.length} commande(s)` }))),
       ),
@@ -281,7 +282,7 @@ function moduleCommandsView(view: PanelView, moduleId: string): Payload {
         ? [
             row(
               new StringSelectMenuBuilder()
-                .setCustomId(id(view, "go"))
+                .setCustomId(id(view, "go", "pick"))
                 .setPlaceholder("Régler une commande")
                 .addOptions(commands.map(command => ({ label: command.name, value: `command:${command.name}`, description: command.description.slice(0, 100) }))),
             ),
@@ -370,7 +371,7 @@ function messagesView(view: PanelView): Payload {
       navigation(view, "messages"),
       row(
         new StringSelectMenuBuilder()
-          .setCustomId(id(view, "go"))
+          .setCustomId(id(view, "go", "pick"))
           .setPlaceholder("Choisir un module")
           .addOptions(modules.map(module => ({ label: module.label, value: `messages:${module.id}` }))),
       ),
@@ -394,7 +395,7 @@ function moduleMessagesView(view: PanelView, moduleId: string): Payload {
         ? [
             row(
               new StringSelectMenuBuilder()
-                .setCustomId(id(view, "go"))
+                .setCustomId(id(view, "go", "pick"))
                 .setPlaceholder("Modifier un message")
                 .addOptions(messages.map(message => ({ label: message.label.slice(0, 100), value: `message:${message.key}`, description: message.key }))),
             ),
