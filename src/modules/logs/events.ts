@@ -154,7 +154,8 @@ export function setupLogs(client: Client) {
     if (!after.inGuild() || after.guildId !== guildId) return;
     const current = after.partial ? await after.fetch().catch(() => null) : after;
     if (!current || current.author.bot) return;
-    // Discord renvoie aussi une mise à jour quand un lien se déploie : seul un changement de texte compte.
+    // Discord renvoie aussi une mise à jour quand un lien se déploie : seule une vraie modification du texte compte.
+    if (!current.editedTimestamp) return;
     if (!before.partial && before.content === current.content) return;
     if (await isLogChannel(guildId, current.channelId)) return;
     void send(current.guild, "message-modifie", color =>
