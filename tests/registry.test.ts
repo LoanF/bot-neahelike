@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from "discord.js";
 import { describe, expect, it } from "vitest";
 import { customId } from "@/core/components";
 import { messageDefs } from "@/core/messages";
@@ -33,5 +34,20 @@ describe("registre des modules", () => {
   it("garde les identifiants de composants sous 100 caractères avec un identifiant de niveau complet", () => {
     const id = customId("cfg", "123456789012345678901", "lvl-edit-save", "0f8fad5b-d9cb-469f-a165-70867728950e");
     expect(id.length).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("visibilité des commandes slash", () => {
+  const commands = Object.fromEntries(new Registry(modules.map(module => ({ ...module, messages: [] }))).slashCommands().map(command => [command.name, command]));
+  const manageGuild = String(PermissionFlagsBits.ManageGuild);
+
+  it("cache les commandes d'administration aux membres sans « Gérer le serveur »", () => {
+    for (const name of ["config", "prefixe", "couleur", "module", "acces", "permission", "profil", "message", "site"]) {
+      expect(commands[name]?.default_member_permissions).toBe(manageGuild);
+    }
+  });
+
+  it("laisse les commandes des joueurs visibles par tous", () => {
+    for (const name of ["aide", "ping", "candidature"]) expect(commands[name]?.default_member_permissions).toBeNull();
   });
 });
