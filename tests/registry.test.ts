@@ -42,13 +42,13 @@ describe("visibilité des commandes slash", () => {
   const manageGuild = String(PermissionFlagsBits.ManageGuild);
 
   it("cache les commandes d'administration aux membres sans « Gérer le serveur »", () => {
-    for (const name of ["config", "prefixe", "couleur", "module", "acces", "permission", "profil", "message", "site", "logs"]) {
+    for (const name of ["config", "prefixe", "couleur", "module", "acces", "permission", "profil", "message", "site", "logs", "tickets"]) {
       expect(commands[name]?.default_member_permissions).toBe(manageGuild);
     }
   });
 
   it("laisse les commandes des joueurs visibles par tous", () => {
-    for (const name of ["aide", "ping", "candidature"]) expect(commands[name]?.default_member_permissions).toBeNull();
+    for (const name of ["aide", "ping", "candidature", "ticket"]) expect(commands[name]?.default_member_permissions).toBeNull();
   });
 
   it("réserve le créateur d'embeds aux membres qui gèrent les messages", () => {
