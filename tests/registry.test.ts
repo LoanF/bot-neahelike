@@ -50,4 +50,8 @@ describe("visibilité des commandes slash", () => {
   it("laisse les commandes des joueurs visibles par tous", () => {
     for (const name of ["aide", "ping", "candidature"]) expect(commands[name]?.default_member_permissions).toBeNull();
   });
+
+  it("réserve le créateur d'embeds aux membres qui gèrent les messages", () => {
+    expect(commands.embed?.default_member_permissions).toBe(String(PermissionFlagsBits.ManageMessages));
+  });
 });
