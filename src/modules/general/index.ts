@@ -1,5 +1,5 @@
 import type { BotModule } from "@/core/registry";
-import { aide } from "./aide";
+import { aide, aidePanel } from "./aide";
 import { ping } from "./ping";
 
 export const general: BotModule = {
@@ -9,6 +9,7 @@ export const general: BotModule = {
   description: "Aide, latence et messages communs à tous les modules.",
   locked: true,
   commands: [aide, ping],
+  components: [aidePanel],
   messages: [
     {
       key: "permission.refusee",
