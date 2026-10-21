@@ -191,6 +191,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_tickets: {
+        Row: {
+          answers: Json
+          category_id: string
+          category_label: string
+          channel_id: string
+          claimed_by_id: string | null
+          close_reason: string | null
+          closed_at: string | null
+          closed_by_id: string | null
+          created_at: string
+          guild_id: string
+          id: string
+          last_activity_at: string
+          number: number
+          opener_id: string
+          rating: number | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          transcript: string | null
+        }
+        Insert: {
+          answers?: Json
+          category_id: string
+          category_label: string
+          channel_id: string
+          claimed_by_id?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by_id?: string | null
+          created_at?: string
+          guild_id: string
+          id?: string
+          last_activity_at?: string
+          number?: never
+          opener_id: string
+          rating?: number | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          transcript?: string | null
+        }
+        Update: {
+          answers?: Json
+          category_id?: string
+          category_label?: string
+          channel_id?: string
+          claimed_by_id?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by_id?: string | null
+          created_at?: string
+          guild_id?: string
+          id?: string
+          last_activity_at?: string
+          number?: never
+          opener_id?: string
+          rating?: number | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          transcript?: string | null
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           actor_id: string | null
@@ -290,6 +350,7 @@ export type Database = {
     }
     Enums: {
       rank: "joueur" | "recruteur" | "staff"
+      ticket_status: "ouvert" | "ferme"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -418,6 +479,7 @@ export const Constants = {
   public: {
     Enums: {
       rank: ["joueur", "recruteur", "staff"],
+      ticket_status: ["ouvert", "ferme"],
     },
   },
 } as const
