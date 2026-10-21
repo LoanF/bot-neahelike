@@ -69,14 +69,7 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 - **Rôles du parcours** (« attente de wl », « Magistrat (wl) ») : attribués par le site lui-même ; le bot les lit seulement pour `/candidature statut`.
 - **Salon de logs staff** : `/site salon-logs #salon` (changements de rang pour l'instant ; candidatures à venir).
 
-### Permissions
-
-- Des **niveaux** pondérés (par défaut Joueur 10, Staff 50, Admin 100), chacun lié à **plusieurs rôles** Discord.
-- Un niveau de poids supérieur **hérite** des droits des niveaux inférieurs : Admin ⊃ Staff ⊃ Joueur.
-- Rang requis d'une commande : réglage de la commande, sinon réglage de son module, sinon valeur par défaut du code.
-- La permission Discord **Administrateur** passe toujours, pour ne jamais perdre l'accès à la configuration. Les commandes de configuration ne peuvent jamais être ouvertes à tout le monde.
-
-### Réponses privées
+## Réponses privées
 
 En slash, les réponses privées sont éphémères (visibles du seul auteur). En préfixe, le message du membre est retiré et la réponse part en MP ; si ses MP sont fermés, elle s'affiche dans le salon et s'efface au bout de 10 secondes. Un panneau ouvert en préfixe reste dans le salon, mais seul son auteur peut s'en servir.
 
