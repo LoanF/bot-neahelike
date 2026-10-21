@@ -3,6 +3,7 @@ import {
   ApplicationCommandType,
   InteractionContextType,
   type Client,
+  type Guild,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord.js";
 import type { CommandDef, OptionDef, OptionType } from "./command";
@@ -18,8 +19,10 @@ export interface BotModule {
   commands?: CommandDef[];
   components?: ComponentHandler[];
   messages?: MessageDef[];
-  /** Branche les écouteurs d'événements du module. */
+  /** Branche les écouteurs d'événements du module (avant la connexion). */
   setup?: (client: Client) => void;
+  /** Lancé une fois le bot prêt et la configuration du serveur chargée. */
+  onReady?: (guild: Guild) => Promise<void>;
 }
 
 const NAME = /^[\p{Ll}\p{Lo}\p{N}_-]{1,32}$/u;

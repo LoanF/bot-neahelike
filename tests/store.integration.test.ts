@@ -8,9 +8,14 @@ const url = process.env.TEST_DATABASE_URL;
 const GUILD = "100000000000000001";
 
 describe.skipIf(!url)("stockage de la configuration", async () => {
-  process.env.DATABASE_URL = url;
-  process.env.DISCORD_BOT_TOKEN ??= "test";
-  process.env.DISCORD_GUILD_ID ??= GUILD;
+  Object.assign(process.env, {
+    DATABASE_URL: url,
+    DISCORD_BOT_TOKEN: "test",
+    DISCORD_GUILD_ID: GUILD,
+    SITE_URL: "https://example.test",
+    DISCORD_ROLE_STAFF: "800000000000000001",
+    DISCORD_ROLE_RECRUTEUR: "800000000000000002",
+  });
 
   const store = await import("@/config/store");
   const { sql, closeDatabase } = await import("@/db");

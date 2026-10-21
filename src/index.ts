@@ -72,6 +72,12 @@ async function onReady(ready: Client<true>) {
   const commands = await guild.commands.set(getRegistry().slashCommands());
   applyPresence(ready, settings.config);
   logger.info({ user: ready.user.tag, guild: guild.name, commands: commands.size, prefix: settings.config.prefix }, "Bot prêt");
+
+  for (const module of modules) {
+    if (!module.onReady) continue;
+    // Un module en échec ne bloque pas les autres.
+    await module.onReady(guild).catch(error => logger.error({ err: error, module: module.id }, "Démarrage du module en échec"));
+  }
 }
 
 async function main() {
