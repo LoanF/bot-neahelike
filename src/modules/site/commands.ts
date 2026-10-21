@@ -4,9 +4,10 @@ import { embed, notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { renderMessage } from "@/core/messages";
 import { row } from "@/core/panels";
-import { sql, type Tables } from "@/db";
+import { sql } from "@/db";
 import { env } from "@/env";
-import { journeyFromRoles } from "./ranks";
+import { latestApplication, statusKey, statusVars, type Account } from "./applications";
+import { ficheEmbed, findProfile, profileUrl } from "./fiche";
 import { resync } from "./events";
 import { MODULE, siteSettings, updateSiteSettings } from "./settings";
 
@@ -16,19 +17,6 @@ export function portalUrl() {
 
 function portalButton(label = "Ouvrir le portail") {
   return row(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(portalUrl()).setLabel(label));
-}
-
-type Account = Pick<Tables<"users">, "cgu_accepted_at" | "rank">;
-
-/** Clé du message de statut selon le compte et les rôles du parcours. */
-export function statusKey(account: Account | undefined, roles: Iterable<string>): string {
-  if (!account) return "candidature.statut.sans-compte";
-  if (!account.cgu_accepted_at) return "candidature.statut.cgu";
-  const { DISCORD_ROLE_ASPIRANT, DISCORD_ROLE_HELIKEEN } = env();
-  const journey = journeyFromRoles(roles, { aspirant: DISCORD_ROLE_ASPIRANT, helikeen: DISCORD_ROLE_HELIKEEN });
-  if (journey === "whiteliste") return "candidature.statut.whiteliste";
-  if (journey === "attente-vocal") return "candidature.statut.attente-vocal";
-  return "candidature.statut.compte-lie";
 }
 
 export const candidature = defineCommand({
@@ -53,13 +41,37 @@ export const candidature = defineCommand({
 
     await ctx.defer({ private: true });
     const [account] = await sql()<Account[]>`select cgu_accepted_at, rank from users where id = ${ctx.user.id}`;
-    const key = statusKey(account, ctx.member.roles.cache.keys());
+    const application = account ? await latestApplication(ctx.user.id) : undefined;
+    const key = statusKey(account, application, ctx.member.roles.cache.keys());
     const result = embed(ctx.settings)
       .setTitle("Ta candidature")
-      .setDescription(renderMessage(ctx.settings, key, vars))
+      .setDescription(renderMessage(ctx.settings, key, statusVars(application, vars.lien)))
       .setFooter({ text: "Visible par toi seul" });
     // Le bouton n'a pas sa place en MP (repli des commandes préfixe) : le lien figure déjà dans le texte.
     await ctx.reply({ embeds: [result], ...(ctx.source === "slash" && key !== "candidature.statut.whiteliste" && { components: [portalButton()] }) }, { private: true });
+  },
+});
+
+export const fiche = defineCommand({
+  name: "fiche",
+  description: "Fiche d'un joueur : compte du site, candidature et décision (réponse visible par toi seul).",
+  module: MODULE,
+  defaultPermission: PERMISSION.messages,
+  options: [{ name: "joueur", description: "Joueur à consulter", type: "user", required: true }],
+  async run(ctx) {
+    const player = ctx.userArg("joueur");
+    if (!player) throw new UserError("Indique le joueur à consulter.");
+    await ctx.defer({ private: true });
+    const profile = await findProfile(player.id);
+    if (!profile) throw new UserError(`${player} ne s'est jamais connecté au portail du site.`);
+    const application = await latestApplication(player.id);
+    await ctx.reply(
+      {
+        embeds: [ficheEmbed(ctx.settings, profile, application).setThumbnail(player.displayAvatarURL())],
+        components: [row(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(profileUrl(player.id)).setLabel("Ouvrir sur le site"))],
+      },
+      { private: true },
+    );
   },
 });
 

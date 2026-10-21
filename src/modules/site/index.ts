@@ -1,6 +1,7 @@
 import type { BotModule } from "@/core/registry";
-import { candidature, site } from "./commands";
+import { candidature, fiche, site } from "./commands";
 import { resync, setupMemberSync } from "./events";
+import { startJournalRelay } from "./journal";
 import { MODULE } from "./settings";
 
 export const siteModule: BotModule = {
@@ -8,9 +9,11 @@ export const siteModule: BotModule = {
   label: "Lien avec le site",
   icon: "🏛️",
   description: "Rangs du site synchronisés avec les rôles Discord, candidature, logs staff.",
-  commands: [candidature, site],
+  commands: [candidature, fiche, site],
   setup: setupMemberSync,
   onReady: async guild => {
+    // Le relais démarre d'abord : un échec de la resynchronisation ne doit pas le priver de logs.
+    startJournalRelay(guild);
     await resync(guild);
   },
   messages: [
@@ -39,8 +42,36 @@ export const siteModule: BotModule = {
       key: "candidature.statut.compte-lie",
       module: MODULE,
       label: "Statut : compte lié, candidature à déposer",
-      defaultContent: "Ton compte est lié au portail. Rends-toi sur ton tableau de bord pour rédiger ou suivre ta candidature : {lien}",
+      defaultContent: "Ton compte est lié au portail. Rends-toi sur ton tableau de bord pour rédiger ta candidature : {lien}",
       variables: { "{lien}": "adresse du portail" },
+    },
+    {
+      key: "candidature.statut.brouillon",
+      module: MODULE,
+      label: "Statut : candidature en cours de rédaction",
+      defaultContent: "Ta candidature est en cours de rédaction. Termine-la et envoie-la depuis le portail : {lien}",
+      variables: { "{lien}": "adresse du portail" },
+    },
+    {
+      key: "candidature.statut.envoyee",
+      module: MODULE,
+      label: "Statut : candidature envoyée",
+      defaultContent: "Ta candidature a été envoyée le {envoi}. Les recruteurs la liront bientôt : tu seras prévenu en message privé.",
+      variables: { "{envoi}": "date d'envoi", "{lien}": "adresse du portail" },
+    },
+    {
+      key: "candidature.statut.a-modifier",
+      module: MODULE,
+      label: "Statut : modification demandée",
+      defaultContent: "Les recruteurs te demandent de reprendre ta candidature.\n**Étapes à revoir :** {etapes}\n**Commentaire :** {commentaire}\n\nCorrige-la puis renvoie-la depuis le portail : {lien}",
+      variables: { "{etapes}": "étapes à revoir", "{commentaire}": "commentaire des recruteurs", "{lien}": "adresse du portail" },
+    },
+    {
+      key: "candidature.statut.refusee",
+      module: MODULE,
+      label: "Statut : candidature refusée",
+      defaultContent: "Ta candidature n'a pas été retenue.\n{criteres}\n**Commentaire :** {commentaire}\n\nTu pourras en déposer une nouvelle à partir du {date}.",
+      variables: { "{criteres}": "motifs du refus", "{commentaire}": "commentaire des recruteurs", "{date}": "date de la prochaine candidature possible" },
     },
     {
       key: "candidature.statut.attente-vocal",

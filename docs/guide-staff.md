@@ -11,7 +11,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
   | Commandes | Permission Discord |
   |---|---|
   | `/config`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
-  | `/embed` | Gérer les messages |
+  | `/embed`, `/fiche` | Gérer les messages |
   | `/aide`, `/ping`, `/candidature`, `/ticket` | Tout le monde |
 
 - Les **administrateurs Discord** peuvent toujours tout utiliser.
@@ -22,7 +22,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 1. `/config`, puis **Accès** : liez vos rôles de staff aux accès.
 2. `/config`, puis **Modules** : coupez ce dont vous n'avez pas besoin.
 3. `/logs` : choisissez où partent les logs.
-4. `/site salon-logs #salon` : salon où le staff suit les changements de rang du site.
+4. `/site salon-logs #salon` : salon où le staff suit les candidatures (envoi, validation, modification demandée, refus, entretien) et les changements de rang du site.
 5. `/config`, puis **Profil du bot** et **Messages** : pseudo, avatar, activité, textes.
 
 ## /config : le panneau de configuration
@@ -95,4 +95,6 @@ Le brouillon est gardé deux heures. Relancez `/embed` pour le retrouver.
 
 - Le rang du site (joueur, recruteur, staff) suit les rôles Discord en temps réel. `/site resync` force une vérification complète.
 - Les rôles du parcours (« attente de wl », « Magistrat (wl) ») sont donnés par le site.
-- Les joueurs suivent leur candidature avec `/candidature statut`. La réponse n'est visible que d'eux.
+- Les joueurs suivent leur candidature avec `/candidature statut` : brouillon, envoyée, modification demandée (étapes et commentaire), entretien, refus (motifs et date de la prochaine candidature possible). La réponse n'est visible que d'eux. Les textes se modifient dans `/config` ▸ Messages.
+- `/fiche @joueur` affiche son compte, sa candidature, son personnage, ses documents et la décision, avec un bouton vers sa fiche sur l'espace staff du site. La réponse n'est visible que de vous. Les notes de l'équipe restent sur le site.
+- Les décisions prises sur le site arrivent dans le salon de logs staff en une vingtaine de secondes, avec un lien vers la fiche du joueur.
