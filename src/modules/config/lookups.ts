@@ -2,7 +2,7 @@ import type { GuildSettings } from "@/config/store";
 import type { Choice, CommandDef } from "@/core/command";
 import { UserError } from "@/core/errors";
 import { messageDef, messageDefs, type MessageDef } from "@/core/messages";
-import type { PermissionLevel } from "@/core/permissions";
+import { ladder, type PermissionLevel } from "@/core/permissions";
 import { getRegistry, type BotModule } from "@/core/registry";
 
 /** Valeurs spéciales acceptées à la place d'un niveau. */
@@ -12,7 +12,7 @@ export const DEFAULT_VALUE = "defaut";
 export function findLevel(settings: GuildSettings, name: string): PermissionLevel {
   const key = name.trim().toLowerCase();
   const level = settings.levels.find(candidate => candidate.name.toLowerCase() === key || candidate.id === key);
-  if (!level) throw new UserError(`Niveau inconnu : « ${name} ». Niveaux existants : ${settings.levels.map(item => item.name).join(", ") || "aucun"}.`);
+  if (!level) throw new UserError(`Accès inconnu : « ${name} ». Accès existants : ${settings.levels.map(item => item.name).join(", ") || "aucun"}.`);
   return level;
 }
 
@@ -35,7 +35,7 @@ export function findMessage(key: string): MessageDef {
 }
 
 export const levelChoices = ({ settings }: { settings: GuildSettings }): Choice[] =>
-  [...settings.levels].reverse().map(level => ({ name: `${level.name} (poids ${level.weight})`, value: level.name }));
+  ladder(settings.levels).map(level => ({ name: level.name, value: level.name }));
 
 export const moduleChoices = (): Choice[] => getRegistry().modules.map(module => ({ name: module.label, value: module.id }));
 

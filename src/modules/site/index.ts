@@ -6,6 +6,7 @@ import { MODULE } from "./settings";
 export const siteModule: BotModule = {
   id: MODULE,
   label: "Lien avec le site",
+  icon: "🏛️",
   description: "Rangs du site synchronisés avec les rôles Discord, candidature, logs staff.",
   commands: [candidature, site],
   setup: setupMemberSync,

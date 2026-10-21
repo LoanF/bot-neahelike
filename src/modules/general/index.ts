@@ -5,6 +5,7 @@ import { ping } from "./ping";
 export const general: BotModule = {
   id: "general",
   label: "Général",
+  icon: "📖",
   description: "Aide, latence et messages communs à tous les modules.",
   locked: true,
   commands: [aide, ping],
@@ -12,9 +13,9 @@ export const general: BotModule = {
     {
       key: "permission.refusee",
       module: "general",
-      label: "Commande refusée (rang insuffisant)",
-      defaultContent: "Cette commande est réservée au rang **{niveau}**.",
-      variables: { "{niveau}": "niveau requis" },
+      label: "Commande refusée (accès insuffisant)",
+      defaultContent: "Tu n'as pas accès à cette commande. Elle est réservée à : **{acces}**.",
+      variables: { "{acces}": "qui peut utiliser la commande" },
     },
     {
       key: "module.desactive",

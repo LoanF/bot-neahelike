@@ -1,9 +1,17 @@
-import type { GuildBasedChannel, GuildMember, Role, User } from "discord.js";
+import { PermissionFlagsBits, type GuildBasedChannel, type GuildMember, type Role, type User } from "discord.js";
 import type { GuildSettings } from "@/config/store";
 import type { CommandContext } from "./context";
 
-/** Poids par défaut, alignés sur les niveaux créés au premier démarrage (Joueur 10, Staff 50, Admin 100). */
-export const LEVEL = { tous: 0, joueur: 10, staff: 50, admin: 100 } as const;
+/**
+ * Permission Discord demandée par défaut. C'est aussi elle qui rend la commande slash visible :
+ * sans cette permission, la commande n'apparaît pas dans la liste « / ».
+ */
+export const PERMISSION = {
+  tous: null,
+  gestion: PermissionFlagsBits.ManageGuild,
+  messages: PermissionFlagsBits.ManageMessages,
+  moderation: PermissionFlagsBits.ModerateMembers,
+} as const;
 
 export type OptionType = "string" | "integer" | "boolean" | "user" | "role" | "channel";
 
@@ -46,8 +54,8 @@ export interface CommandDef {
   module: string;
   /** Noms supplémentaires, en préfixe uniquement. */
   aliases?: string[];
-  /** Poids requis tant que rien n'est configuré depuis Discord. */
-  defaultWeight: number;
+  /** Permission Discord requise tant qu'aucun accès n'est réglé depuis Discord (null : tout le monde). */
+  defaultPermission: bigint | null;
   /** Commande de configuration : ne peut jamais être ouverte à tout le monde. */
   protected?: boolean;
   options?: OptionDef[];

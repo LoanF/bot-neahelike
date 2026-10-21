@@ -1,5 +1,5 @@
 import { canUse, isModuleEnabled, requiredLabel } from "@/core/access";
-import { defineCommand, LEVEL, usage, type CommandDef } from "@/core/command";
+import { defineCommand, PERMISSION, usage, type CommandDef } from "@/core/command";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { getRegistry } from "@/core/registry";
@@ -29,7 +29,7 @@ export const aide = defineCommand({
   description: "Liste les commandes accessibles, ou détaille l'une d'elles.",
   module: "general",
   aliases: ["help"],
-  defaultWeight: LEVEL.tous,
+  defaultPermission: PERMISSION.tous,
   options: [
     {
       name: "commande",
@@ -56,7 +56,7 @@ export const aide = defineCommand({
         .setDescription(command.description)
         .addFields(
           { name: "Utilisation", value: usages(command, prefix).join("\n").slice(0, 1024) },
-          { name: "Rang requis", value: requiredLabel(settings, command), inline: true },
+          { name: "Qui peut l'utiliser", value: requiredLabel(settings, command), inline: true },
           { name: "Module", value: registry.module(command.module)?.label ?? command.module, inline: true },
         );
       if (command.aliases?.length) result.addFields({ name: "Alias", value: command.aliases.map(alias => `\`${prefix}${alias}\``).join(", "), inline: true });
