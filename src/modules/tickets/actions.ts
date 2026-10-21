@@ -108,14 +108,19 @@ export async function createTicket(member: GuildMember, category: TicketCategory
     { id: me.id, allow: [...MEMBER_ALLOW, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
   ];
 
-  const channel = await guild.channels.create({
-    name: channelName(category.label, member.user.username),
-    type: ChannelType.GuildText,
-    parent,
-    topic: `${category.label} · ticket de ${member.user.tag}`,
-    permissionOverwrites: overwrites,
-    reason: `Ticket ${category.label} ouvert par ${member.user.tag}`,
-  });
+  const channel = await guild.channels
+    .create({
+      name: channelName(category.label, member.user.username),
+      type: ChannelType.GuildText,
+      parent,
+      topic: `${category.label} · ticket de ${member.user.tag}`,
+      permissionOverwrites: overwrites,
+      reason: `Ticket ${category.label} ouvert par ${member.user.tag}`,
+    })
+    .catch(error => {
+      logger.error({ err: error }, "Création du salon de ticket impossible");
+      throw new UserError("Le salon du ticket n'a pas pu être créé (la catégorie Discord est peut-être pleine : 50 salons au plus). Préviens l'équipe.");
+    });
 
   let ticket: Ticket;
   try {
@@ -145,7 +150,9 @@ async function refreshWelcome(channel: TextChannel, ticket: Ticket) {
   const settings = await getSettings(channel.guild.id);
   const category = categoryOf(settings, ticket) ?? { emoji: "🎫", label: ticket.category_label };
   const opener = await channel.guild.members.fetch(ticket.opener_id).catch(() => null);
-  await welcome.edit({ embeds: opener ? [welcomeEmbed(settings, ticket, category, opener)] : welcome.embeds, components: ticketButtons(ticket) }).catch(() => {});
+  // Fermé : les boutons Rouvrir et Supprimer sont sur le message de fermeture, pas sur l'accueil.
+  const components = ticket.status === "ouvert" ? ticketButtons(ticket) : [];
+  await welcome.edit({ embeds: opener ? [welcomeEmbed(settings, ticket, category, opener)] : welcome.embeds, components }).catch(() => {});
 }
 
 export async function claim(channel: TextChannel, ticket: Ticket, staff: GuildMember): Promise<Ticket> {
@@ -273,8 +280,7 @@ export async function reopen(channel: TextChannel, ticket: Ticket, staff: GuildM
   const settings = await getSettings(channel.guild.id);
   await channel.send({
     content: `<@${ticket.opener_id}>`,
-    embeds: [embed(settings).setTitle(`🔓 Ticket ${ticketNumber(reopened)} rouvert`).setDescription(`Rouvert par <@${staff.id}>.`)],
-    components: ticketButtons(reopened),
+    embeds: [embed(settings).setTitle(`🔓 Ticket ${ticketNumber(reopened)} rouvert`).setDescription(`Rouvert par <@${staff.id}>. Les boutons sont de retour sur le message d'accueil.`)],
     allowedMentions: { users: [ticket.opener_id] },
   });
   await refreshWelcome(channel, reopened);
