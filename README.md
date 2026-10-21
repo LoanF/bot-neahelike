@@ -53,6 +53,7 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 | `/tickets` | Panneau : catégories, rôles, questions, archives, publication du panneau public | Gérer le serveur |
 | `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe ou auteur) | Tout le monde |
 | `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
+| `/fiche @joueur` | Compte, candidature et décision d'un joueur, lien vers sa fiche staff (réponse privée) | Gérer les messages |
 | `/site` | Salon de logs staff, resynchronisation des rangs | Gérer le serveur |
 | `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Les mêmes réglages qu'en panneau, en une commande | Gérer le serveur |
 | `/aide` | Les commandes accessibles, module par module, avec des exemples | Tout le monde |
@@ -68,8 +69,9 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 
 - **Rangs du site** : ils découlent uniquement des rôles Discord (`DISCORD_ROLE_STAFF`, `DISCORD_ROLE_RECRUTEUR`, plusieurs ID séparés par des virgules ; un seul rôle suffit). Le bot les répercute en temps réel sur `users` (arrivée, départ, changement de rôles) et journalise `rang.change`, `discord.rejoint`, `discord.quitte`, comme le site.
 - **Resynchronisation complète** au démarrage et après une coupure de la passerelle : seuls les écarts sont écrits. Le bot ne crée jamais de compte : seuls les comptes déjà liés au site sont mis à jour.
-- **Rôles du parcours** (« attente de wl », « Magistrat (wl) ») : attribués par le site lui-même ; le bot les lit seulement pour `/candidature statut`.
-- **Salon de logs staff** : `/site salon-logs #salon` (changements de rang pour l'instant ; candidatures à venir).
+- **Rôles du parcours** (« attente de wl », « Magistrat (wl) ») : attribués par le site lui-même ; le bot les lit pour `/candidature statut` quand le joueur n'a pas de candidature sur le portail.
+- **Candidatures** : `/candidature statut` et `/fiche` lisent `applications` (dernière candidature du joueur) ; le bot n'y écrit jamais.
+- **Salon de logs staff** : `/site salon-logs #salon`. Changements de rang, et décisions du site relayées depuis le journal `events` (sondé toutes les 20 s, curseur gardé dans les réglages du module : au premier démarrage, l'historique n'est pas republié).
 
 ## Réponses privées
 
