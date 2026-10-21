@@ -56,6 +56,15 @@ Toutes les commandes existent en préfixe (`+` par défaut) et en slash (`/`).
 | `profil voir/pseudo/bio/avatar/banniere/statut/activite` | Personnalisation du bot |
 | `message liste/voir/definir/reinitialiser` | Textes personnalisables, avec variables (`{user}`, `{server}`, `{count}`…) |
 | `aide`, `ping` | Aide (filtrée selon le rang du membre) et latence |
+| `candidature lien/statut` | Lien vers le portail et état de la candidature (réponse visible par le seul joueur) |
+| `site voir/salon-logs/resync` | Salon de logs staff, resynchronisation manuelle des rangs |
+
+## Lien avec le site
+
+- **Rangs du site** : ils découlent uniquement des rôles Discord (`DISCORD_ROLE_STAFF`, `DISCORD_ROLE_RECRUTEUR`, plusieurs ID séparés par des virgules ; un seul rôle suffit). Le bot les répercute en temps réel sur `users` (arrivée, départ, changement de rôles) et journalise `rang.change`, `discord.rejoint`, `discord.quitte`, comme le site.
+- **Resynchronisation complète** au démarrage et après une coupure de la passerelle : seuls les écarts sont écrits. Le bot ne crée jamais de compte : seuls les comptes déjà liés au site sont mis à jour.
+- **Rôles du parcours** (« attente de wl », « Magistrat (wl) ») : attribués par le site lui-même ; le bot les lit seulement pour `/candidature statut`.
+- **Salon de logs staff** : `/site salon-logs #salon` (changements de rang pour l'instant ; candidatures à venir).
 
 ### Permissions
 
