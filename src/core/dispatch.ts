@@ -229,7 +229,7 @@ async function runComponent(interaction: PanelInteraction) {
   const deny = (text: string) => interaction.reply({ embeds: [failure(settings, text)], flags: MessageFlags.Ephemeral });
 
   if (ownerId !== ANYONE && ownerId !== interaction.user.id) {
-    await deny("Ce panneau appartient à un autre membre : ouvrez le vôtre avec la commande correspondante.");
+    await deny("Ce panneau appartient à un autre membre : ouvre le tien avec la commande correspondante.");
     return;
   }
   const command = handler.command ? getRegistry().find(handler.command) : undefined;

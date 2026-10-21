@@ -27,7 +27,7 @@ export const general: BotModule = {
       key: "erreur.inattendue",
       module: "general",
       label: "Erreur inattendue",
-      defaultContent: "Une erreur inattendue est survenue. Réessayez dans un instant.",
+      defaultContent: "Une erreur inattendue est survenue. Réessaie dans un instant.",
     },
   ],
 };
