@@ -129,8 +129,14 @@ export function modal(id: string, title: string, fields: ModalField[]): ModalBui
     );
 }
 
-/** Valeur d'un champ de formulaire, `null` si laissé vide. */
+/** Valeur d'un champ de formulaire, `null` s'il est laissé vide ou absent du formulaire. */
 export function field(interaction: ModalSubmitInteraction, id: string): string | null {
-  const value = interaction.fields.getTextInputValue(id).trim();
+  let value: string;
+  try {
+    value = interaction.fields.getTextInputValue(id).trim();
+  } catch {
+    // discord.js lève une erreur pour un champ absent : on le traite comme vide.
+    return null;
+  }
   return value === "" ? null : value;
 }

@@ -257,22 +257,25 @@ function elementModal(owner: string, element: string, embed: APIEmbed) {
 }
 
 /** Applique le formulaire envoyé pour un élément. */
-function applyElement(element: string, form: ModalSubmitInteraction, embed: APIEmbed): APIEmbed {
-  const text = field(form, "texte");
+export function applyElement(element: string, form: ModalSubmitInteraction, embed: APIEmbed): APIEmbed {
+  // Chaque formulaire a ses propres champs : on ne lit que ceux de l'élément modifié.
+  const text = () => field(form, "texte");
   const url = () => parseUrl(field(form, "url"), "Adresse");
   switch (element) {
     case "titre":
-      return setOrClear(setOrClear(embed, "title", text), "url", text ? url() : null);
+      return setOrClear(setOrClear(embed, "title", text()), "url", text() ? url() : null);
     case "description":
-      return setOrClear(embed, "description", text);
+      return setOrClear(embed, "description", text());
     case "couleur": {
-      const color = parseColor(text ?? "");
-      if (color === null) throw new UserError(`Couleur inconnue : « ${text} ». Essaie ${COLOR_NAMES.slice(0, 5).join(", ")}… ou un code comme #d1a64a.`);
+      const raw = text() ?? "";
+      const color = parseColor(raw);
+      if (color === null) throw new UserError(`Couleur inconnue : « ${raw} ». Essaie ${COLOR_NAMES.slice(0, 5).join(", ")}… ou un code comme #d1a64a.`);
       return { ...embed, color };
     }
     case "auteur": {
+      const name = text();
       const icon = url();
-      return setOrClear(embed, "author", text ? { name: text, ...(icon && { icon_url: icon }) } : null);
+      return setOrClear(embed, "author", name ? { name, ...(icon && { icon_url: icon }) } : null);
     }
     case "miniature": {
       const image = url();
@@ -283,8 +286,9 @@ function applyElement(element: string, form: ModalSubmitInteraction, embed: APIE
       return setOrClear(embed, "image", image ? { url: image } : null);
     }
     case "pied": {
+      const footer = text();
       const icon = url();
-      return setOrClear(embed, "footer", text ? { text, ...(icon && { icon_url: icon }) } : null);
+      return setOrClear(embed, "footer", footer ? { text: footer, ...(icon && { icon_url: icon }) } : null);
     }
     case "champ-ajouter": {
       const fields = embed.fields ?? [];
