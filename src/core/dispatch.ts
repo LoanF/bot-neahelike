@@ -1,6 +1,7 @@
 import {
   MessageFlags,
   type AutocompleteInteraction,
+  type ButtonInteraction,
   type ChatInputCommandInteraction,
   type Guild,
   type GuildMember,
@@ -10,7 +11,7 @@ import {
 import { getSettings, type GuildSettings } from "@/config/store";
 import { env } from "@/env";
 import { logger } from "@/logger";
-import { canUse, isModuleEnabled, requiredLabel } from "./access";
+import { canUse, isModuleEnabled, requiredLabel, unavailableTables } from "./access";
 import { normalizeChoice, parseBoolean, parseInteger, parseSnowflake, tokenizeWithIndex, type Token } from "./args";
 import { usage, type ArgValue, type CommandDef, type OptionDef, type SubcommandDef } from "./command";
 import { ANYONE, parseCustomId, type PanelInteraction } from "./components";
@@ -22,6 +23,11 @@ import { getRegistry } from "./registry";
 
 /** Message de refus si le module est coupé ou si le membre n'a pas l'accès requis. */
 function refusal(settings: GuildSettings, member: GuildMember, command: CommandDef): string | null {
+  const missing = unavailableTables(command.module);
+  if (missing) {
+    const label = getRegistry().module(command.module)?.label ?? command.module;
+    return `Le module **${label}** n'est pas encore disponible : la base n'a pas sa table (${missing.join(", ")}). Elle doit d'abord être ajoutée au schéma du site.`;
+  }
   if (!isModuleEnabled(settings, command.module)) {
     const label = getRegistry().module(command.module)?.label ?? command.module;
     return renderMessage(settings, "module.desactive", { module: label });
@@ -250,7 +256,26 @@ async function runComponent(interaction: PanelInteraction) {
 
 // ─── Points d'entrée ────────────────────────────────────────────────────────
 
+/** Bouton cliqué en message privé : seuls les gestionnaires qui l'acceptent le reçoivent. */
+async function runDmButton(interaction: ButtonInteraction) {
+  const { prefix, ownerId, action, args } = parseCustomId(interaction.customId);
+  const handler = getRegistry().component(prefix);
+  if (!handler?.handleDm) return;
+  const settings = await getSettings(env().DISCORD_GUILD_ID);
+  if (ownerId !== ANYONE && ownerId !== interaction.user.id) return;
+  try {
+    await handler.handleDm(interaction, { settings, action, args });
+  } catch (error) {
+    if (!(error instanceof UserError)) throw error;
+    await interaction.reply({ embeds: [failure(settings, error.message)] });
+  }
+}
+
 export async function handleInteraction(interaction: Interaction) {
+  if (!interaction.inGuild()) {
+    if (interaction.isButton()) await runDmButton(interaction).catch(error => logger.error({ err: error, customId: interaction.customId }, "Bouton en MP en échec"));
+    return;
+  }
   if (!interaction.inCachedGuild() || interaction.guildId !== env().DISCORD_GUILD_ID) return;
   try {
     if (interaction.isChatInputCommand()) await runSlash(interaction);

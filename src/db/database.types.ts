@@ -14,6 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      applications: {
+        Row: {
+          background: Json | null
+          changes_comment: string | null
+          changes_steps: string[] | null
+          created_at: string
+          decided_at: string | null
+          dossier: Json | null
+          hrp: Json | null
+          id: string
+          refusal_comment: string | null
+          refusal_criteria: string[] | null
+          reviewer_id: string | null
+          rp: Json | null
+          status: Database["public"]["Enums"]["application_status"]
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          background?: Json | null
+          changes_comment?: string | null
+          changes_steps?: string[] | null
+          created_at?: string
+          decided_at?: string | null
+          dossier?: Json | null
+          hrp?: Json | null
+          id?: string
+          refusal_comment?: string | null
+          refusal_criteria?: string[] | null
+          reviewer_id?: string | null
+          rp?: Json | null
+          status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          background?: Json | null
+          changes_comment?: string | null
+          changes_steps?: string[] | null
+          created_at?: string
+          decided_at?: string | null
+          dossier?: Json | null
+          hrp?: Json | null
+          id?: string
+          refusal_comment?: string | null
+          refusal_criteria?: string[] | null
+          reviewer_id?: string | null
+          rp?: Json | null
+          status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_reviewer_id_users_id_fk"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_user_id_users_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bot_command_permissions: {
         Row: {
           command: string
@@ -191,6 +266,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_tickets: {
+        Row: {
+          answers: Json
+          category_id: string
+          category_label: string
+          channel_id: string
+          claimed_by_id: string | null
+          close_reason: string | null
+          closed_at: string | null
+          closed_by_id: string | null
+          created_at: string
+          guild_id: string
+          id: string
+          last_activity_at: string
+          number: number
+          opener_id: string
+          rating: number | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          transcript: string | null
+        }
+        Insert: {
+          answers?: Json
+          category_id: string
+          category_label: string
+          channel_id: string
+          claimed_by_id?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by_id?: string | null
+          created_at?: string
+          guild_id: string
+          id?: string
+          last_activity_at?: string
+          number?: never
+          opener_id: string
+          rating?: number | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          transcript?: string | null
+        }
+        Update: {
+          answers?: Json
+          category_id?: string
+          category_label?: string
+          channel_id?: string
+          claimed_by_id?: string | null
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by_id?: string | null
+          created_at?: string
+          guild_id?: string
+          id?: string
+          last_activity_at?: string
+          number?: never
+          opener_id?: string
+          rating?: number | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          transcript?: string | null
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           actor_id: string | null
@@ -226,6 +361,81 @@ export type Database = {
           },
           {
             foreignKeyName: "events_subject_id_users_id_fk"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_views: {
+        Row: {
+          last_seen_at: string
+          subject_id: string
+          viewer_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          subject_id: string
+          viewer_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          subject_id?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_views_subject_id_users_id_fk"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_views_viewer_id_users_id_fk"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_notes: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string
+          id: string
+          subject_id: string
+          visibility: Database["public"]["Enums"]["note_visibility"]
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          subject_id: string
+          visibility?: Database["public"]["Enums"]["note_visibility"]
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          subject_id?: string
+          visibility?: Database["public"]["Enums"]["note_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notes_author_id_users_id_fk"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_notes_subject_id_users_id_fk"
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -289,7 +499,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      application_status:
+        | "brouillon"
+        | "envoyee"
+        | "a_modifier"
+        | "entretien"
+        | "whitelistee"
+        | "refusee"
+      note_visibility: "equipe" | "staff"
       rank: "joueur" | "recruteur" | "staff"
+      ticket_status: "ouvert" | "ferme"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -417,7 +636,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      application_status: [
+        "brouillon",
+        "envoyee",
+        "a_modifier",
+        "entretien",
+        "whitelistee",
+        "refusee",
+      ],
+      note_visibility: ["equipe", "staff"],
       rank: ["joueur", "recruteur", "staff"],
+      ticket_status: ["ouvert", "ferme"],
     },
   },
 } as const

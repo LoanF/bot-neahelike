@@ -10,9 +10,9 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
   | Commandes | Permission Discord |
   |---|---|
-  | `/config`, `/logs`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
+  | `/config`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
   | `/embed` | Gérer les messages |
-  | `/aide`, `/ping`, `/candidature` | Tout le monde |
+  | `/aide`, `/ping`, `/candidature`, `/ticket` | Tout le monde |
 
 - Les **administrateurs Discord** peuvent toujours tout utiliser.
 - Les panneaux et les réponses privées ne sont visibles que de la personne qui a lancé la commande. Avec le préfixe, le panneau s'affiche dans le salon, mais seul son auteur peut cliquer dessus.
@@ -57,6 +57,30 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 | Serveur | Salons, rôles, invitations, fils de discussion |
 
 Le contenu d'un message supprimé n'est connu que si le bot l'a vu passer depuis son dernier démarrage.
+
+## /tickets : les tickets
+
+**Réglages** (`/tickets`) :
+
+1. **Où créer les tickets** : choisissez une catégorie Discord ; chaque ticket y devient un salon privé.
+2. **Transcriptions** : le salon qui reçoit, à chaque fermeture, un résumé et la conversation complète en fichier HTML.
+3. **Fermeture automatique** : jamais, ou après 1 à 14 jours sans message.
+4. **Catégories** (Support, Question whitelist, Plainte joueur, Plainte staff, Dossier de reprise, Partenariat au départ) : pour chacune, les **rôles** qui voient et gèrent ses tickets, les **questions** posées à l'ouverture (5 au plus), le nom, l'emoji, la description et la place sur le panneau. Le bouton ➕ en ajoute.
+5. **Publier le panneau** : choisissez un salon. Le panneau se met à jour tout seul quand vous changez les catégories.
+
+**Côté joueur** : il clique sur une catégorie, répond au formulaire, et un salon privé s'ouvre, visible de lui et des rôles de la catégorie. Un seul ticket ouvert par catégorie à la fois.
+
+**Dans un ticket** :
+
+| Bouton ou commande | Qui | Effet |
+|---|---|---|
+| 🙋 Prendre en charge | Équipe | Indique qui s'occupe du ticket |
+| ➕ Ajouter un membre, `/ticket ajouter`, `/ticket retirer` | Équipe | Donne ou retire l'accès au salon |
+| 🔒 Fermer, `/ticket fermer` | Équipe ou auteur | Demande une raison, enregistre la transcription, verrouille le salon pour l'auteur et lui envoie en MP une note de 1 à 5 |
+| 🔓 Rouvrir | Équipe | Rouvre le ticket fermé |
+| 🗑️ Supprimer le salon | Équipe | Supprime le salon d'un ticket fermé (la transcription reste) |
+
+« L'équipe », c'est les rôles de la catégorie, ainsi que les membres qui ont « Gérer les salons ». Le type de log **Tickets** (dans `/logs`) suit les ouvertures, prises en charge, fermetures et réouvertures.
 
 ## /embed : le créateur d'embeds
 

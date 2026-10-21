@@ -2,7 +2,8 @@ import { Client, Events, GatewayIntentBits, Partials, RESTEvents } from "discord
 import { ensureGuild, getSettings } from "@/config/store";
 import { handleInteraction, handleMessage } from "@/core/dispatch";
 import { getRegistry, Registry, setRegistry } from "@/core/registry";
-import { checkDatabase } from "@/db/check";
+import { checkDatabase, missingTables } from "@/db/check";
+import { markUnavailable, unavailableTables } from "@/core/access";
 import { closeDatabase } from "@/db";
 import { env } from "@/env";
 import { logger } from "@/logger";
@@ -76,7 +77,7 @@ async function onReady(ready: Client<true>) {
   logger.info({ user: ready.user.tag, guild: guild.name, commands: commands.size, prefix: settings.config.prefix }, "Bot prêt");
 
   for (const module of modules) {
-    if (!module.onReady) continue;
+    if (!module.onReady || unavailableTables(module.id)) continue;
     // Un module en échec ne bloque pas les autres.
     await module.onReady(guild).catch(error => logger.error({ err: error, module: module.id }, "Démarrage du module en échec"));
   }
@@ -87,7 +88,15 @@ async function main() {
   await checkDatabase();
 
   setRegistry(new Registry(modules));
-  for (const module of modules) module.setup?.(client);
+  for (const module of modules) {
+    const missing = await missingTables(module.tables ?? []);
+    if (missing.length > 0) {
+      markUnavailable(module.id, missing);
+      logger.warn({ module: module.id, tables: missing }, "Module hors service : tables absentes de la base (à ajouter au schéma du site)");
+      continue;
+    }
+    module.setup?.(client);
+  }
 
   watchConnection();
   client.once(Events.ClientReady, ready => {

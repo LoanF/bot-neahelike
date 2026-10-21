@@ -4,7 +4,19 @@ import type { CommandDef } from "./command";
 import { allows, describeResolved, memberWeight, resolveRequirement, type MemberAccess, type Resolved } from "./permissions";
 import { getRegistry } from "./registry";
 
+/** Modules hors service faute de tables en base, avec les tables manquantes. */
+const unavailable = new Map<string, string[]>();
+
+export function markUnavailable(moduleId: string, tables: string[]) {
+  unavailable.set(moduleId, tables);
+}
+
+export function unavailableTables(moduleId: string): string[] | undefined {
+  return unavailable.get(moduleId);
+}
+
 export function isModuleEnabled(settings: GuildSettings, moduleId: string): boolean {
+  if (unavailable.has(moduleId)) return false;
   if (getRegistry().module(moduleId)?.locked) return true;
   return settings.modules.get(moduleId)?.enabled ?? true;
 }

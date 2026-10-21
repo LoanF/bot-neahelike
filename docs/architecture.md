@@ -41,7 +41,7 @@ Discord (passerelle + REST) ──► src/index.ts ──► modules (commandes,
 1. Créer `src/modules/<id>/index.ts` qui exporte un `BotModule` : `id`, `label`, `icon`, `description`, `commands`, `components`, `messages`, `setup` (écouteurs) et `onReady`.
 2. L'ajouter à `src/modules/index.ts`.
 3. Si le module a des réglages, les ranger dans `bot_modules.settings` (jsonb) avec un schéma zod, comme `src/modules/logs/settings.ts`.
-4. Si le module a besoin d'une nouvelle table : l'ajouter au schéma du site (`docs/schema-site.md`), migrer, puis lancer `pnpm db:types` ici.
+4. Si le module a besoin d'une nouvelle table : l'ajouter au schéma du site (`docs/schema-site.md`), migrer, puis lancer `pnpm db:types` ici. Déclarer la table dans `tables` du module : tant qu'elle manque en base, le module est mis hors service au démarrage au lieu d'arrêter le bot.
 5. Ajouter les tests : rendu des panneaux (limites de Discord) et logique pure.
 
 ## Modules actuels
@@ -51,5 +51,6 @@ Discord (passerelle + REST) ──► src/index.ts ──► modules (commandes,
 | `general` | `/aide`, `/ping`, messages système |
 | `config` | Panneau `/config` et commandes de réglage |
 | `site` | Synchronisation des rangs du site, `/candidature`, `/site` |
+| `tickets` | Panneau `/tickets`, panneau public, salons de tickets, transcription HTML, note en MP, fermeture automatique (table `bot_tickets`) |
 | `logs` | Panneau `/logs`, écoute des messages, membres, vocal et du journal d'audit |
 | `embeds` | Créateur d'embeds `/embed` (brouillons gardés en mémoire) |

@@ -50,6 +50,8 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 |---|---|---|
 | `/config` | Panneau : général, modules, accès, commandes, profil du bot, messages | Gérer le serveur |
 | `/logs` | Panneau : quel salon reçoit quel type de log | Gérer le serveur |
+| `/tickets` | Panneau : catégories, rôles, questions, archives, publication du panneau public | Gérer le serveur |
+| `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe ou auteur) | Tout le monde |
 | `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
 | `/site` | Salon de logs staff, resynchronisation des rangs | Gérer le serveur |
 | `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Les mêmes réglages qu'en panneau, en une commande | Gérer le serveur |
@@ -82,7 +84,7 @@ En slash, les réponses privées sont éphémères (visibles du seul auteur). En
 | `src/db/` | Connexion, types générés, vérification des tables |
 | `src/config/store.ts` | Lecture et écriture de la configuration, avec cache |
 | `src/core/` | Socle : commandes (slash + préfixe), permissions, panneaux, messages, embeds |
-| `src/modules/` | Un dossier par module (`general`, `config`, `site`, `logs`, `embeds`) |
+| `src/modules/` | Un dossier par module (`general`, `config`, `site`, `tickets`, `logs`, `embeds`) |
 | `docs/schema-site.md` | Tables à ajouter au schéma du site |
 | `docs/guide-staff.md` | Guide d'utilisation pour le staff |
 | `docs/architecture.md` | Organisation du code, ajouter un module |

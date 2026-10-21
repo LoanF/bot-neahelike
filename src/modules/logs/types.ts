@@ -5,6 +5,7 @@ export const LOG_CATEGORIES = {
   moderation: { label: "Modération", emoji: "⚖️" },
   vocal: { label: "Vocal", emoji: "🔊" },
   serveur: { label: "Serveur", emoji: "🏛️" },
+  tickets: { label: "Tickets", emoji: "🎫" },
 } as const;
 
 export type LogCategory = keyof typeof LOG_CATEGORIES;
@@ -34,6 +35,7 @@ export const LOG_TYPES = [
   { id: "roles", label: "Rôles du serveur", emoji: "🛡️", category: "serveur", description: "Rôles créés, modifiés ou supprimés" },
   { id: "invitations", label: "Invitations", emoji: "✉️", category: "serveur", description: "Invitations créées ou supprimées" },
   { id: "fils", label: "Fils de discussion", emoji: "🧵", category: "serveur", description: "Fils créés ou supprimés" },
+  { id: "tickets", label: "Tickets", emoji: "🎫", category: "tickets", description: "Ouvertures, prises en charge, fermetures et réouvertures" },
 ] as const satisfies readonly LogType[];
 
 export type LogTypeId = (typeof LOG_TYPES)[number]["id"];
