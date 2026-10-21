@@ -25,7 +25,7 @@ import type { LogTypeId } from "./types";
 type Build = (color: number) => EmbedBuilder | { embed: EmbedBuilder; files: AttachmentBuilder[] } | null;
 
 /** Publie un log dans le salon choisi pour son type ; rien si le type est désactivé. Un échec est journalisé sans bloquer le bot. */
-async function send(guild: Guild, type: LogTypeId, build: Build) {
+export async function sendLog(guild: Guild, type: LogTypeId, build: Build) {
   try {
     const settings = await getSettings(guild.id);
     if (!isModuleEnabled(settings, MODULE)) return;
@@ -69,50 +69,50 @@ function onAuditEntry(entry: GuildAuditLogsEntry, guild: Guild) {
 
   switch (entry.action) {
     case AuditLogEvent.MemberBanAdd:
-      return send(guild, "bannissement", color => sanction(color, "bannissement", "Membre banni", target));
+      return sendLog(guild, "bannissement", color => sanction(color, "bannissement", "Membre banni", target));
     case AuditLogEvent.MemberBanRemove:
-      return send(guild, "bannissement", color => sanction(color, "bannissement", "Bannissement levé", target));
+      return sendLog(guild, "bannissement", color => sanction(color, "bannissement", "Bannissement levé", target));
     case AuditLogEvent.MemberKick:
-      return send(guild, "expulsion", color => sanction(color, "expulsion", "Membre expulsé", target));
+      return sendLog(guild, "expulsion", color => sanction(color, "expulsion", "Membre expulsé", target));
     case AuditLogEvent.MemberUpdate: {
       const timeout = changeOf(entry, "communication_disabled_until");
       if (timeout) {
         const until = timeout.new ? new Date(timeout.new as string) : null;
-        void send(guild, "exclusion", color => sanction(color, "exclusion", until ? "Exclusion temporaire" : "Exclusion levée", { ...target, until }));
+        void sendLog(guild, "exclusion", color => sanction(color, "exclusion", until ? "Exclusion temporaire" : "Exclusion levée", { ...target, until }));
       }
       const nick = changeOf(entry, "nick");
       if (nick && targetId) {
-        void send(guild, "pseudo", color => nicknameChanged(color, { id: targetId, before: nick.old as string | null, after: nick.new as string | null, executorId }));
+        void sendLog(guild, "pseudo", color => nicknameChanged(color, { id: targetId, before: nick.old as string | null, after: nick.new as string | null, executorId }));
       }
       return;
     }
     case AuditLogEvent.MemberRoleUpdate:
       if (!targetId) return;
-      return send(guild, "roles-membre", color => memberRolesChanged(color, { id: targetId, added: idsOf(entry, "$add"), removed: idsOf(entry, "$remove"), executorId }));
+      return sendLog(guild, "roles-membre", color => memberRolesChanged(color, { id: targetId, added: idsOf(entry, "$add"), removed: idsOf(entry, "$remove"), executorId }));
 
     case AuditLogEvent.ChannelCreate:
-      return send(guild, "salons", color => serverChange(color, "salons", "Salon créé", { subject: `<#${targetId}> ${nameOf(entry) ?? ""}`, executorId, reason }));
+      return sendLog(guild, "salons", color => serverChange(color, "salons", "Salon créé", { subject: `<#${targetId}> ${nameOf(entry) ?? ""}`, executorId, reason }));
     case AuditLogEvent.ChannelDelete:
-      return send(guild, "salons", color => serverChange(color, "salons", "Salon supprimé", { subject: nameOf(entry) ?? "Salon inconnu", executorId, reason }));
+      return sendLog(guild, "salons", color => serverChange(color, "salons", "Salon supprimé", { subject: nameOf(entry) ?? "Salon inconnu", executorId, reason }));
     case AuditLogEvent.ChannelUpdate:
-      return send(guild, "salons", color => serverChange(color, "salons", "Salon modifié", { subject: `<#${targetId}>`, executorId, changes, reason }));
+      return sendLog(guild, "salons", color => serverChange(color, "salons", "Salon modifié", { subject: `<#${targetId}>`, executorId, changes, reason }));
     case AuditLogEvent.ChannelOverwriteCreate:
     case AuditLogEvent.ChannelOverwriteUpdate:
     case AuditLogEvent.ChannelOverwriteDelete:
-      return send(guild, "salons", color => serverChange(color, "salons", "Permissions d'un salon modifiées", { subject: `<#${targetId}>`, executorId, reason }));
+      return sendLog(guild, "salons", color => serverChange(color, "salons", "Permissions d'un salon modifiées", { subject: `<#${targetId}>`, executorId, reason }));
 
     case AuditLogEvent.RoleCreate:
-      return send(guild, "roles", color => serverChange(color, "roles", "Rôle créé", { subject: `<@&${targetId}> ${nameOf(entry) ?? ""}`, executorId, reason }));
+      return sendLog(guild, "roles", color => serverChange(color, "roles", "Rôle créé", { subject: `<@&${targetId}> ${nameOf(entry) ?? ""}`, executorId, reason }));
     case AuditLogEvent.RoleDelete:
-      return send(guild, "roles", color => serverChange(color, "roles", "Rôle supprimé", { subject: nameOf(entry) ?? "Rôle inconnu", executorId, reason }));
+      return sendLog(guild, "roles", color => serverChange(color, "roles", "Rôle supprimé", { subject: nameOf(entry) ?? "Rôle inconnu", executorId, reason }));
     case AuditLogEvent.RoleUpdate:
-      return send(guild, "roles", color => serverChange(color, "roles", "Rôle modifié", { subject: `<@&${targetId}>`, executorId, changes, reason }));
+      return sendLog(guild, "roles", color => serverChange(color, "roles", "Rôle modifié", { subject: `<@&${targetId}>`, executorId, changes, reason }));
 
     case AuditLogEvent.InviteCreate:
     case AuditLogEvent.InviteDelete: {
       const code = (changeOf(entry, "code")?.new ?? changeOf(entry, "code")?.old) as string | undefined;
       const created = entry.action === AuditLogEvent.InviteCreate;
-      return send(guild, "invitations", color =>
+      return sendLog(guild, "invitations", color =>
         serverChange(color, "invitations", created ? "Invitation créée" : "Invitation supprimée", {
           subject: code ? `discord.gg/${code}` : "Invitation",
           executorId,
@@ -122,9 +122,9 @@ function onAuditEntry(entry: GuildAuditLogsEntry, guild: Guild) {
     }
 
     case AuditLogEvent.ThreadCreate:
-      return send(guild, "fils", color => serverChange(color, "fils", "Fil créé", { subject: `<#${targetId}> ${nameOf(entry) ?? ""}`, executorId }));
+      return sendLog(guild, "fils", color => serverChange(color, "fils", "Fil créé", { subject: `<#${targetId}> ${nameOf(entry) ?? ""}`, executorId }));
     case AuditLogEvent.ThreadDelete:
-      return send(guild, "fils", color => serverChange(color, "fils", "Fil supprimé", { subject: nameOf(entry) ?? "Fil inconnu", executorId }));
+      return sendLog(guild, "fils", color => serverChange(color, "fils", "Fil supprimé", { subject: nameOf(entry) ?? "Fil inconnu", executorId }));
   }
 }
 
@@ -139,7 +139,7 @@ export function setupLogs(client: Client) {
   client.on(Events.MessageDelete, async message => {
     if (!message.inGuild() || message.guildId !== guildId || message.author?.id === client.user?.id) return;
     if (await isLogChannel(message.guildId, message.channelId)) return;
-    void send(message.guild, "message-supprime", color =>
+    void sendLog(message.guild, "message-supprime", color =>
       messageDeleted(color, {
         authorId: message.author?.id,
         authorTag: message.author?.tag,
@@ -158,7 +158,7 @@ export function setupLogs(client: Client) {
     if (!current.editedTimestamp) return;
     if (!before.partial && before.content === current.content) return;
     if (await isLogChannel(guildId, current.channelId)) return;
-    void send(current.guild, "message-modifie", color =>
+    void sendLog(current.guild, "message-modifie", color =>
       messageEdited(color, {
         authorId: current.author.id,
         authorTag: current.author.tag,
@@ -177,7 +177,7 @@ export function setupLogs(client: Client) {
       authorTag: message.author?.tag ?? "inconnu",
       content: message.content ?? "",
     }));
-    void send(channel.guild, "messages-purges", color => {
+    void sendLog(channel.guild, "messages-purges", color => {
       const embed = messagesPurged(color, { channelId: channel.id, count: messages.size, saved: known.length });
       if (known.length === 0) return embed;
       return { embed, files: [new AttachmentBuilder(Buffer.from(purgeTranscript(known), "utf8"), { name: "messages-supprimes.txt" })] };
@@ -187,7 +187,7 @@ export function setupLogs(client: Client) {
   // Membres
   client.on(Events.GuildMemberAdd, member => {
     if (member.guild.id !== guildId) return;
-    void send(member.guild, "arrivee", color =>
+    void sendLog(member.guild, "arrivee", color =>
       memberJoined(color, {
         id: member.id,
         tag: member.user.tag,
@@ -200,7 +200,7 @@ export function setupLogs(client: Client) {
 
   client.on(Events.GuildMemberRemove, member => {
     if (member.guild.id !== guildId) return;
-    void send(member.guild, "depart", color =>
+    void sendLog(member.guild, "depart", color =>
       memberLeft(color, {
         id: member.id,
         tag: member.user?.tag,
@@ -213,12 +213,12 @@ export function setupLogs(client: Client) {
 
   client.on(Events.GuildMemberUpdate, (before, after) => {
     if (after.guild.id !== guildId || before.partial || before.premiumSince || !after.premiumSince) return;
-    void send(after.guild, "boost", color => boosted(color, { id: after.id, boosts: after.guild.premiumSubscriptionCount ?? 0 }));
+    void sendLog(after.guild, "boost", color => boosted(color, { id: after.id, boosts: after.guild.premiumSubscriptionCount ?? 0 }));
   });
 
   // Vocal
   client.on(Events.VoiceStateUpdate, (before, after) => {
     if (after.guild.id !== guildId || before.channelId === after.channelId) return;
-    void send(after.guild, "vocal", color => voiceMoved(color, { id: after.id, from: before.channelId, to: after.channelId }));
+    void sendLog(after.guild, "vocal", color => voiceMoved(color, { id: after.id, from: before.channelId, to: after.channelId }));
   });
 }

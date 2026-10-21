@@ -195,6 +195,23 @@ export function serverChange(
   return result;
 }
 
+// ─── Tickets ────────────────────────────────────────────────────────────────
+
+export function ticketEvent(
+  color: number,
+  title: string,
+  data: { number: number; categoryLabel: string; channelId: string; openerId: string; byId?: string | null; reason?: string | null },
+): EmbedBuilder {
+  const result = base("tickets", color, `${title} · #${String(data.number).padStart(4, "0")}`).addFields(
+    { name: "Catégorie", value: data.categoryLabel, inline: true },
+    { name: "Salon", value: `<#${data.channelId}>`, inline: true },
+    { name: "Ouvert par", value: who(data.openerId), inline: true },
+  );
+  if (data.byId) result.addFields({ name: "Par", value: who(data.byId), inline: true });
+  if (data.reason) result.addFields({ name: "Raison", value: truncate(data.reason) });
+  return result;
+}
+
 /** Exemple envoyé par le bouton « Envoyer un essai » du panneau. */
 export function sample(color: number, type: LogTypeId): EmbedBuilder {
   const definition = logType(type)!;
