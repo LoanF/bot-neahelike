@@ -59,7 +59,7 @@ const GUIDES: Record<string, string> = {
     "Chaque réglage est enregistré aussitôt. Les commandes existent en `/` et avec le préfixe (`+config`).",
   general:
     "**Préfixe** : le caractère placé devant les commandes écrites, par exemple `+aide`. Les commandes `/` fonctionnent toujours, quel que soit le préfixe.\n\n" +
-    "**Couleurs** : la barre colorée à gauche des messages du bot. La principale sert presque partout, la neutre aux logs et aux refus, l'accent aux détails.",
+    "**Couleurs** : la barre colorée à gauche des messages du bot. La principale sert presque partout (logs compris), la neutre aux refus, l'accent à l'aide.",
   modules:
     "Un module regroupe une fonction du bot et ses commandes. Cliquez sur un module pour l'activer ou le désactiver : ses commandes ne répondent plus quand il est désactivé.\n\n" +
     "Pour réserver tout un module à un accès (par exemple Staff), choisissez-le dans le menu « Régler qui peut utiliser un module ».",
@@ -175,7 +175,7 @@ function general(view: PanelView): Payload {
         value: `\`${config.prefix}\` — exemple : \`${config.prefix}aide\`. Les commandes \`/\` restent toujours disponibles.`,
       }),
       sample(config.embed_color, "**Principale** — la plupart des messages"),
-      sample(config.embed_color_dark, "**Neutre** — logs et refus"),
+      sample(config.embed_color_dark, "**Neutre** — refus et confirmations de suppression"),
       sample(config.embed_color_light, "**Accent** — détails"),
     ],
     components: [

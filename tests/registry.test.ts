@@ -42,7 +42,7 @@ describe("visibilité des commandes slash", () => {
   const manageGuild = String(PermissionFlagsBits.ManageGuild);
 
   it("cache les commandes d'administration aux membres sans « Gérer le serveur »", () => {
-    for (const name of ["config", "prefixe", "couleur", "module", "acces", "permission", "profil", "message", "site"]) {
+    for (const name of ["config", "prefixe", "couleur", "module", "acces", "permission", "profil", "message", "site", "logs"]) {
       expect(commands[name]?.default_member_permissions).toBe(manageGuild);
     }
   });
