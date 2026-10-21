@@ -42,22 +42,25 @@ pnpm exec supabase login   # une seule fois
 pnpm db:types              # utilise SUPABASE_PROJECT_ID
 ```
 
-## Configuration depuis Discord
+## Utilisation depuis Discord
 
-Toutes les commandes existent en préfixe (`+` par défaut) et en slash (`/`).
+Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md). Toutes les commandes existent en `/` et avec le préfixe (`+` par défaut).
 
-| Commande | Rôle |
-|---|---|
-| `config` | Panneau à boutons et menus : général, modules, niveaux, commandes, profil, messages |
-| `prefixe`, `couleur` | Préfixe et couleurs des embeds (or `#d1a64a`, bronze `#1a150f`, parchemin `#f1ece2`) |
-| `module liste/activer/desactiver/niveau` | Modules et rang requis par module |
-| `niveau liste/creer/modifier/supprimer/ajouter-role/retirer-role` | Niveaux de permission |
-| `permission voir/definir` | Rang requis par commande |
-| `profil voir/pseudo/bio/avatar/banniere/statut/activite` | Personnalisation du bot |
-| `message liste/voir/definir/reinitialiser` | Textes personnalisables, avec variables (`{user}`, `{server}`, `{count}`…) |
-| `aide`, `ping` | Aide (filtrée selon le rang du membre) et latence |
-| `candidature lien/statut` | Lien vers le portail et état de la candidature (réponse visible par le seul joueur) |
-| `site voir/salon-logs/resync` | Salon de logs staff, resynchronisation manuelle des rangs |
+| Commande | Rôle | Visible par défaut pour |
+|---|---|---|
+| `/config` | Panneau : général, modules, accès, commandes, profil du bot, messages | Gérer le serveur |
+| `/logs` | Panneau : quel salon reçoit quel type de log | Gérer le serveur |
+| `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
+| `/site` | Salon de logs staff, resynchronisation des rangs | Gérer le serveur |
+| `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Les mêmes réglages qu'en panneau, en une commande | Gérer le serveur |
+| `/aide` | Les commandes accessibles, module par module, avec des exemples | Tout le monde |
+| `/candidature lien/statut` | Lien vers le portail et état de la candidature (réponse privée) | Tout le monde |
+
+### Permissions
+
+- Une commande `/` n'apparaît que pour les membres qui ont sa **permission Discord par défaut** ; le bot revérifie l'accès à chaque utilisation, y compris en préfixe.
+- Des **accès** (par défaut Admin ▸ Staff ▸ Joueur), chacun lié à un ou plusieurs rôles, affinent les règles : un accès placé plus haut a tous les droits de ceux du dessous. Réglage de la commande, sinon du module, sinon permission Discord par défaut.
+- Les **administrateurs Discord** passent toujours ; les commandes de configuration ne peuvent jamais être ouvertes à tout le monde.
 
 ## Lien avec le site
 
@@ -86,8 +89,10 @@ En slash, les réponses privées sont éphémères (visibles du seul auteur). En
 | `src/db/` | Connexion, types générés, vérification des tables |
 | `src/config/store.ts` | Lecture et écriture de la configuration, avec cache |
 | `src/core/` | Socle : commandes (slash + préfixe), permissions, panneaux, messages, embeds |
-| `src/modules/` | Un dossier par module (`general`, `config`, puis tickets, modération…) |
+| `src/modules/` | Un dossier par module (`general`, `config`, `site`, `logs`, `embeds`) |
 | `docs/schema-site.md` | Tables à ajouter au schéma du site |
+| `docs/guide-staff.md` | Guide d'utilisation pour le staff |
+| `docs/architecture.md` | Organisation du code, ajouter un module |
 
 ## Vérifications
 
