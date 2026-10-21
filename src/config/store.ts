@@ -216,3 +216,12 @@ export async function resetMessage(guildId: string, key: string) {
   await sql()`delete from bot_messages where guild_id = ${guildId} and key = ${key}`;
   invalidate(guildId);
 }
+
+/** Réglages propres à un module (validés par le module lui-même). */
+export async function setModuleSettings(guildId: string, module: string, settings: Json) {
+  await sql()`
+    insert into bot_modules (guild_id, module, settings) values (${guildId}, ${module}, ${sql().json(settings as never)})
+    on conflict (guild_id, module) do update set settings = excluded.settings, updated_at = now()
+  `;
+  invalidate(guildId);
+}
