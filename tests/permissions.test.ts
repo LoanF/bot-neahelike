@@ -1,5 +1,16 @@
+import { PermissionFlagsBits } from "discord.js";
 import { describe, expect, it } from "vitest";
-import { EVERYONE, describeWeight, memberWeight, requiredWeight, type PermissionLevel } from "@/core/permissions";
+import {
+  allows,
+  describeResolved,
+  ladder,
+  memberWeight,
+  move,
+  resolveRequirement,
+  weightsFor,
+  type MemberAccess,
+  type PermissionLevel,
+} from "@/core/permissions";
 
 const levels: PermissionLevel[] = [
   { id: "joueur", name: "Joueur", weight: 10, roleIds: ["r-heliken"] },
@@ -7,66 +18,99 @@ const levels: PermissionLevel[] = [
   { id: "admin", name: "Admin", weight: 100, roleIds: ["r-admin"] },
 ];
 
+const MANAGE = PermissionFlagsBits.ManageGuild;
+
+function member(roles: string[], permissions: bigint[] = [], administrator = false): MemberAccess {
+  return { weight: memberWeight(levels, roles), administrator, hasPermission: permission => permissions.includes(permission) };
+}
+
 describe("memberWeight", () => {
   it("vaut 0 sans aucun rôle lié", () => {
-    expect(memberWeight(levels, ["r-autre"], false)).toBe(EVERYONE);
+    expect(memberWeight(levels, ["r-autre"])).toBe(0);
   });
 
-  it("prend le niveau le plus élevé parmi les rôles du membre", () => {
-    expect(memberWeight(levels, ["r-heliken", "r-modo"], false)).toBe(50);
-  });
-
-  it("accepte plusieurs rôles pour un même niveau", () => {
-    expect(memberWeight(levels, ["r-staff"], false)).toBe(50);
-    expect(memberWeight(levels, ["r-modo"], false)).toBe(50);
-  });
-
-  it("donne tous les droits aux administrateurs Discord", () => {
-    expect(memberWeight(levels, [], true)).toBe(Number.POSITIVE_INFINITY);
+  it("prend l'accès le plus haut parmi les rôles du membre, plusieurs rôles par accès", () => {
+    expect(memberWeight(levels, ["r-heliken", "r-modo"])).toBe(50);
+    expect(memberWeight(levels, ["r-staff"])).toBe(50);
   });
 });
 
-describe("héritage", () => {
-  it("un Admin peut utiliser une commande Staff, un Staff une commande Joueur", () => {
-    const admin = memberWeight(levels, ["r-admin"], false);
-    const staff = memberWeight(levels, ["r-staff"], false);
-    expect(admin >= requiredWeight(levels, { defaultWeight: 50 })).toBe(true);
-    expect(staff >= requiredWeight(levels, { defaultWeight: 10 })).toBe(true);
-    expect(staff >= requiredWeight(levels, { defaultWeight: 100 })).toBe(false);
+describe("resolveRequirement", () => {
+  it("demande la permission Discord par défaut sans réglage", () => {
+    expect(resolveRequirement(levels, { defaultPermission: MANAGE })).toEqual({ kind: "permission", permission: MANAGE });
+    expect(resolveRequirement(levels, { defaultPermission: null })).toEqual({ kind: "everyone" });
+  });
+
+  it("applique l'accès du module, puis celui de la commande en priorité", () => {
+    expect(resolveRequirement(levels, { defaultPermission: MANAGE, moduleLevelId: "admin" })).toMatchObject({ kind: "level", level: { id: "admin" } });
+    expect(resolveRequirement(levels, { defaultPermission: MANAGE, moduleLevelId: "admin", override: { levelId: "joueur" } })).toMatchObject({
+      kind: "level",
+      level: { id: "joueur" },
+    });
+  });
+
+  it("ouvre à tous, sauf une commande protégée qui garde sa permission par défaut", () => {
+    expect(resolveRequirement(levels, { defaultPermission: MANAGE, override: { levelId: null } })).toEqual({ kind: "everyone" });
+    expect(resolveRequirement(levels, { defaultPermission: MANAGE, protected: true, override: { levelId: null } })).toEqual({
+      kind: "permission",
+      permission: MANAGE,
+    });
+  });
+
+  it("ignore un accès supprimé", () => {
+    expect(resolveRequirement(levels, { defaultPermission: MANAGE, moduleLevelId: "disparu", override: { levelId: "disparu" } })).toEqual({
+      kind: "permission",
+      permission: MANAGE,
+    });
   });
 });
 
-describe("requiredWeight", () => {
-  it("utilise la valeur par défaut sans réglage", () => {
-    expect(requiredWeight(levels, { defaultWeight: 50 })).toBe(50);
+describe("allows", () => {
+  const staffOnly = resolveRequirement(levels, { defaultPermission: MANAGE, override: { levelId: "staff" } });
+
+  it("un accès supérieur hérite des droits des accès inférieurs", () => {
+    expect(allows(staffOnly, member(["r-admin"]))).toBe(true);
+    expect(allows(staffOnly, member(["r-modo"]))).toBe(true);
+    expect(allows(staffOnly, member(["r-heliken"]))).toBe(false);
   });
 
-  it("applique le niveau du module", () => {
-    expect(requiredWeight(levels, { defaultWeight: 50, moduleLevelId: "admin" })).toBe(100);
+  it("suit la permission Discord quand aucun accès n'est réglé", () => {
+    const byDefault = resolveRequirement(levels, { defaultPermission: MANAGE });
+    expect(allows(byDefault, member([], [MANAGE]))).toBe(true);
+    expect(allows(byDefault, member(["r-admin"]))).toBe(false);
   });
 
-  it("le réglage de la commande l'emporte sur le module", () => {
-    expect(requiredWeight(levels, { defaultWeight: 50, moduleLevelId: "admin", override: { levelId: "joueur" } })).toBe(10);
-  });
-
-  it("ouvre la commande à tous quand le réglage vaut « tout le monde »", () => {
-    expect(requiredWeight(levels, { defaultWeight: 50, override: { levelId: null } })).toBe(EVERYONE);
-  });
-
-  it("revient à la valeur par défaut si le niveau a été supprimé", () => {
-    expect(requiredWeight(levels, { defaultWeight: 50, moduleLevelId: "supprime" })).toBe(50);
-  });
-
-  it("n'ouvre jamais une commande protégée à tous", () => {
-    expect(requiredWeight(levels, { defaultWeight: 100, protected: true, override: { levelId: null } })).toBe(100);
+  it("laisse toujours passer les administrateurs Discord", () => {
+    expect(allows(staffOnly, member([], [], true))).toBe(true);
   });
 });
 
-describe("describeWeight", () => {
-  it("nomme le niveau correspondant", () => {
-    expect(describeWeight(levels, 50)).toBe("Staff");
-    expect(describeWeight(levels, EVERYONE)).toBe("Tout le monde");
-    expect(describeWeight(levels, 30)).toBe("Staff (poids 30)");
-    expect(describeWeight(levels, 500)).toBe("Administrateurs Discord (poids 500)");
+describe("describeResolved", () => {
+  it("écrit l'exigence en clair", () => {
+    expect(describeResolved({ kind: "everyone" })).toBe("Tout le monde");
+    expect(describeResolved({ kind: "level", level: levels[1]! })).toBe("Accès Staff et au-dessus");
+    expect(describeResolved({ kind: "permission", permission: MANAGE })).toBe("Permission Discord « Gérer le serveur »");
+  });
+});
+
+describe("échelle des accès", () => {
+  it("se lit du plus haut au plus bas", () => {
+    expect(ladder(levels).map(level => level.name)).toEqual(["Admin", "Staff", "Joueur"]);
+  });
+
+  it("monte et descend d'un cran, sans sortir de l'échelle", () => {
+    const order = ["admin", "staff", "joueur"];
+    expect(move(order, "joueur", "monter")).toEqual(["admin", "joueur", "staff"]);
+    expect(move(order, "admin", "descendre")).toEqual(["staff", "admin", "joueur"]);
+    expect(move(order, "admin", "monter")).toEqual(order);
+    expect(move(order, "joueur", "descendre")).toEqual(order);
+  });
+
+  it("renumérote les poids en gardant l'ordre", () => {
+    expect([...weightsFor(["a", "b", "c"]).entries()]).toEqual([
+      ["a", 30],
+      ["b", 20],
+      ["c", 10],
+    ]);
   });
 });

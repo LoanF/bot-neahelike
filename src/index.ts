@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, RESTEvents } from "discord.js";
+import { Client, Events, GatewayIntentBits, Partials, RESTEvents } from "discord.js";
 import { ensureGuild, getSettings } from "@/config/store";
 import { handleInteraction, handleMessage } from "@/core/dispatch";
 import { getRegistry, Registry, setRegistry } from "@/core/registry";
@@ -21,6 +21,8 @@ const client = new Client({
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildPresences,
   ],
+  // Événements des messages et membres absents du cache (suppression d'un ancien message, départ…).
+  partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User],
   // Jamais de @everyone ou @here involontaire : seuls les membres et rôles mentionnés explicitement.
   allowedMentions: { parse: ["users", "roles"], repliedUser: false },
 });

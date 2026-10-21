@@ -1,11 +1,11 @@
-import { defineCommand, LEVEL } from "@/core/command";
+import { defineCommand, PERMISSION } from "@/core/command";
 import { notice } from "@/core/embeds";
 
 export const ping = defineCommand({
   name: "ping",
   description: "Affiche la latence du bot.",
   module: "general",
-  defaultWeight: LEVEL.tous,
+  defaultPermission: PERMISSION.tous,
   async run(ctx) {
     const started = Date.now();
     await ctx.defer({ private: true });

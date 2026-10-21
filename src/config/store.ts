@@ -1,4 +1,5 @@
-import type { PermissionLevel } from "@/core/permissions";
+import type postgres from "postgres";
+import { move, weightsFor, type PermissionLevel } from "@/core/permissions";
 import { isUniqueViolation, UserError } from "@/core/errors";
 import { sql, type Json, type Tables, type TablesUpdate } from "@/db";
 
@@ -123,36 +124,66 @@ export async function setModuleLevel(guildId: string, module: string, levelId: s
 
 // ─── Niveaux de permission ──────────────────────────────────────────────────
 
-function validateLevel(name: string, weight: number) {
-  if (name.length < 1 || name.length > 32) throw new UserError("Le nom d'un niveau doit faire entre 1 et 32 caractères.");
-  if (!Number.isInteger(weight) || weight < 1 || weight > 1000) throw new UserError("Le poids d'un niveau doit être un entier entre 1 et 1000.");
+function validateName(name: string) {
+  if (name.length < 1 || name.length > 32) throw new UserError("Le nom d'un accès doit faire entre 1 et 32 caractères.");
 }
 
 async function guardUnique<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
   } catch (error) {
-    if (isUniqueViolation(error)) throw new UserError("Un autre niveau porte déjà ce nom ou ce poids.");
+    if (isUniqueViolation(error)) throw new UserError("Un autre accès porte déjà ce nom.");
     throw error;
   }
 }
 
-export async function createLevel(guildId: string, name: string, weight: number) {
-  validateLevel(name, weight);
-  const settings = await getSettings(guildId);
-  if (settings.levels.length >= MAX_LEVELS) throw new UserError(`Un serveur ne peut pas avoir plus de ${MAX_LEVELS} niveaux.`);
-  const [row] = await guardUnique(
-    () => sql()<{ id: string }[]>`insert into bot_permission_levels (guild_id, name, weight) values (${guildId}, ${name}, ${weight}) returning id`,
-  );
-  invalidate(guildId);
-  return row!.id;
+type Tx = postgres.TransactionSql;
+
+/** Réécrit les poids selon l'ordre donné (du plus haut au plus bas), en deux temps pour respecter l'unicité. */
+async function applyOrder(tx: Tx, guildId: string, orderedIds: string[]) {
+  await tx`update bot_permission_levels set weight = weight + 1000000 where guild_id = ${guildId}`;
+  for (const [id, weight] of weightsFor(orderedIds)) {
+    await tx`update bot_permission_levels set weight = ${weight} where id = ${id} and guild_id = ${guildId}`;
+  }
 }
 
-export async function updateLevel(guildId: string, levelId: string, patch: { name: string; weight: number }) {
-  validateLevel(patch.name, patch.weight);
-  await guardUnique(
-    () => sql()`update bot_permission_levels set name = ${patch.name}, weight = ${patch.weight} where id = ${levelId} and guild_id = ${guildId}`,
+async function currentOrder(tx: Tx, guildId: string): Promise<string[]> {
+  const rows = await tx<{ id: string }[]>`select id from bot_permission_levels where guild_id = ${guildId} order by weight desc`;
+  return rows.map(row => row.id);
+}
+
+/** Crée un accès en bas de l'échelle ; on le monte ensuite à sa place. */
+export async function createLevel(guildId: string, name: string) {
+  validateName(name);
+  const settings = await getSettings(guildId);
+  if (settings.levels.length >= MAX_LEVELS) throw new UserError(`Un serveur ne peut pas avoir plus de ${MAX_LEVELS} accès.`);
+  const id = await guardUnique(() =>
+    sql().begin(async tx => {
+      const order = await currentOrder(tx, guildId);
+      const [row] = await tx<{ id: string }[]>`
+        insert into bot_permission_levels (guild_id, name, weight) values (${guildId}, ${name}, ${-1}) returning id
+      `;
+      await applyOrder(tx, guildId, [...order, row!.id]);
+      return row!.id;
+    }),
   );
+  invalidate(guildId);
+  return id;
+}
+
+export async function renameLevel(guildId: string, levelId: string, name: string) {
+  validateName(name);
+  await guardUnique(() => sql()`update bot_permission_levels set name = ${name} where id = ${levelId} and guild_id = ${guildId}`);
+  invalidate(guildId);
+}
+
+/** Monte ou descend un accès d'un cran dans l'échelle. */
+export async function moveLevel(guildId: string, levelId: string, direction: "monter" | "descendre") {
+  await sql().begin(async tx => {
+    const order = await currentOrder(tx, guildId);
+    if (!order.includes(levelId)) throw new UserError("Cet accès n'existe plus.");
+    await applyOrder(tx, guildId, move(order, levelId, direction));
+  });
   invalidate(guildId);
 }
 
@@ -166,7 +197,7 @@ export async function deleteLevel(guildId: string, levelId: string) {
 export async function setLevelRoles(guildId: string, levelId: string, roleIds: string[]) {
   await sql().begin(async tx => {
     const [level] = await tx`select id from bot_permission_levels where id = ${levelId} and guild_id = ${guildId}`;
-    if (!level) throw new UserError("Ce niveau n'existe plus.");
+    if (!level) throw new UserError("Cet accès n'existe plus.");
     await tx`delete from bot_permission_level_roles where level_id = ${levelId}`;
     for (const roleId of new Set(roleIds)) {
       await tx`insert into bot_permission_level_roles (level_id, role_id) values (${levelId}, ${roleId})`;

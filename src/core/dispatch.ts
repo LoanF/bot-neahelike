@@ -20,13 +20,13 @@ import { UserError } from "./errors";
 import { renderMessage } from "./messages";
 import { getRegistry } from "./registry";
 
-/** Message de refus si le module est coupé ou si le membre n'a pas le niveau requis. */
+/** Message de refus si le module est coupé ou si le membre n'a pas l'accès requis. */
 function refusal(settings: GuildSettings, member: GuildMember, command: CommandDef): string | null {
   if (!isModuleEnabled(settings, command.module)) {
     const label = getRegistry().module(command.module)?.label ?? command.module;
     return renderMessage(settings, "module.desactive", { module: label });
   }
-  if (!canUse(settings, member, command)) return renderMessage(settings, "permission.refusee", { niveau: requiredLabel(settings, command) });
+  if (!canUse(settings, member, command)) return renderMessage(settings, "permission.refusee", { acces: requiredLabel(settings, command), niveau: requiredLabel(settings, command) });
   return null;
 }
 

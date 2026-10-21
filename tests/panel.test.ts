@@ -37,35 +37,58 @@ const guild = { name: "Néa Hélikè", memberCount: 42, roles: { cache: new Map(
 const view = { settings, guild, owner: "300000000000000001" };
 
 const VIEWS = [
-  "home",
+  "accueil",
   "general",
   "modules",
   "module:general",
-  "module:config",
-  "levels",
-  `level:${settings.levels[0]!.id}`,
-  `level-delete:${settings.levels[0]!.id}`,
-  "commands",
-  "commands:config",
-  "command:niveau",
-  "command:ping",
-  "profile",
+  "module:site",
+  "acces",
+  `niveau:${settings.levels[0]!.id}`,
+  `niveau:${settings.levels[1]!.id}`,
+  `niveau-suppr:${settings.levels[0]!.id}`,
+  "commandes",
+  "commande:acces",
+  "commande:ping",
+  "profil",
   "messages",
-  "messages:general",
   "message:permission.refusee",
 ];
 
-function customIds(payload: ReturnType<typeof renderPanel>): string[] {
-  return (payload.components ?? []).flatMap(row => row.toJSON().components.map(component => ("custom_id" in component ? component.custom_id : "")));
+function rows(payload: ReturnType<typeof renderPanel>) {
+  return (payload.components ?? []).map(row => row.toJSON().components);
 }
 
 describe("panneau de configuration", () => {
   it.each(VIEWS)("la vue %s respecte les limites de Discord", target => {
     const payload = renderPanel(view, target);
-    const ids = customIds(payload);
+    const components = rows(payload);
+    const ids = components.flat().map(component => ("custom_id" in component ? component.custom_id : ""));
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(id.length).toBeLessThanOrEqual(100);
-    expect(payload.components?.length ?? 0).toBeLessThanOrEqual(5);
-    expect(() => payload.embeds?.map(embed => embed.toJSON())).not.toThrow();
+    expect(components.length).toBeLessThanOrEqual(5);
+    for (const row of components) expect(row.length).toBeLessThanOrEqual(5);
+    for (const component of components.flat()) {
+      if ("options" in component) expect(component.options.length).toBeLessThanOrEqual(25);
+    }
+    const embeds = payload.embeds?.map(embed => embed.toJSON()) ?? [];
+    expect(embeds.length).toBeGreaterThan(0);
+    for (const embed of embeds) expect(embed.description?.length ?? 0).toBeLessThanOrEqual(4096);
+  });
+
+  it("ne retombe sur l'accueil que pour l'accueil", () => {
+    const homeTitle = renderPanel(view, "accueil").embeds![0]!.toJSON().title;
+    for (const target of VIEWS.slice(1)) expect(renderPanel(view, target).embeds![0]!.toJSON().title).not.toBe(homeTitle);
+  });
+
+  it("affiche la ligne de confirmation après une action, et la vide ensuite", () => {
+    expect(renderPanel({ ...view, notice: "Préfixe changé." }, "general").content).toBe("✅ Préfixe changé.");
+    expect(renderPanel(view, "general").content).toBe("");
+  });
+
+  it("n'affiche jamais le poids des accès", () => {
+    for (const target of VIEWS) {
+      const text = JSON.stringify(renderPanel(view, target).embeds?.map(embed => embed.toJSON()));
+      expect(text).not.toMatch(/poids/i);
+    }
   });
 });

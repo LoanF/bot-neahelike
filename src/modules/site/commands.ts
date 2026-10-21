@@ -1,5 +1,5 @@
 import { ButtonBuilder, ButtonStyle } from "discord.js";
-import { defineCommand, LEVEL } from "@/core/command";
+import { defineCommand, PERMISSION } from "@/core/command";
 import { embed, notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { renderMessage } from "@/core/messages";
@@ -35,7 +35,7 @@ export const candidature = defineCommand({
   name: "candidature",
   description: "Ta candidature à la whitelist de Néa Hélikè.",
   module: MODULE,
-  defaultWeight: LEVEL.tous,
+  defaultPermission: PERMISSION.tous,
   subcommands: [
     { name: "lien", description: "Lien vers le portail pour déposer ta candidature" },
     { name: "statut", description: "Où en est ta candidature (réponse visible par toi seul)" },
@@ -67,7 +67,7 @@ export const site = defineCommand({
   name: "site",
   description: "Lien entre le bot et le site : salon de logs staff, resynchronisation des rangs.",
   module: MODULE,
-  defaultWeight: LEVEL.admin,
+  defaultPermission: PERMISSION.gestion,
   protected: true,
   subcommands: [
     { name: "voir", description: "Affiche les réglages du lien avec le site" },

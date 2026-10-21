@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { ladder } from "@/core/permissions";
 
 /**
  * Tests du stockage contre une vraie base, où le schéma du site a été migré.
@@ -76,14 +77,29 @@ describe.skipIf(!url)("stockage de la configuration", async () => {
     expect(await roles()).toEqual(["r2", "r3"]);
   });
 
-  it("refuse un nom ou un poids déjà pris avec un message lisible", async () => {
-    await expect(store.createLevel(GUILD, "Staff", 42)).rejects.toThrow("Un autre niveau porte déjà ce nom ou ce poids.");
-    await expect(store.createLevel(GUILD, "Modérateur", 50)).rejects.toThrow("Un autre niveau porte déjà ce nom ou ce poids.");
-    await expect(store.createLevel(GUILD, "Modérateur", 0)).rejects.toThrow("entre 1 et 1000");
+  it("refuse un nom déjà pris ou vide avec un message lisible", async () => {
+    await expect(store.createLevel(GUILD, "Staff")).rejects.toThrow("Un autre accès porte déjà ce nom.");
+    await expect(store.createLevel(GUILD, "")).rejects.toThrow("entre 1 et 32 caractères");
   });
 
-  it("supprimer un niveau retire ses rôles et ses réglages, et rend le module à sa valeur par défaut", async () => {
-    const levelId = await store.createLevel(GUILD, "Modérateur", 30);
+  it("crée un accès en bas de l'échelle, puis le monte et le descend", async () => {
+    const order = async () => ladder((await store.getSettings(GUILD)).levels).map(level => level.name);
+    const levelId = await store.createLevel(GUILD, "Citoyen");
+    expect(await order()).toEqual(["Admin", "Staff", "Joueur", "Citoyen"]);
+
+    await store.moveLevel(GUILD, levelId, "monter");
+    await store.moveLevel(GUILD, levelId, "monter");
+    expect(await order()).toEqual(["Admin", "Citoyen", "Staff", "Joueur"]);
+    await store.moveLevel(GUILD, levelId, "descendre");
+    expect(await order()).toEqual(["Admin", "Staff", "Citoyen", "Joueur"]);
+
+    await store.renameLevel(GUILD, levelId, "Magistrat");
+    expect(await order()).toEqual(["Admin", "Staff", "Magistrat", "Joueur"]);
+    await store.deleteLevel(GUILD, levelId);
+  });
+
+  it("supprimer un accès retire ses rôles et ses réglages, et rend le module à sa valeur par défaut", async () => {
+    const levelId = await store.createLevel(GUILD, "Modérateur");
     await store.addLevelRole(GUILD, levelId, "r-modo");
     await store.setCommandLevel(GUILD, "ping", levelId);
     await store.setModuleLevel(GUILD, "general", levelId);

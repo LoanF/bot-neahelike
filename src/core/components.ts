@@ -14,7 +14,7 @@ export interface ComponentHandler {
   prefix: string;
   /** Commande dont la permission est revérifiée à chaque clic. */
   command?: string;
-  handle: (interaction: PanelInteraction, context: { settings: GuildSettings; action: string; args: string[] }) => Promise<void>;
+  handle: (interaction: PanelInteraction, context: { settings: GuildSettings; action: string; args: string[] }) => Promise<unknown>;
 }
 
 const MAX_CUSTOM_ID = 100;

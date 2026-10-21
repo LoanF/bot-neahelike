@@ -13,6 +13,8 @@ import { registerMessages, type MessageDef } from "./messages";
 export interface BotModule {
   id: string;
   label: string;
+  /** Emoji affiché dans les panneaux et l'aide. */
+  icon: string;
   description: string;
   /** Module indispensable : ne peut pas être désactivé. */
   locked?: boolean;
@@ -114,6 +116,8 @@ export class Registry {
       name: command.name,
       description: command.description.slice(0, 100),
       contexts: [InteractionContextType.Guild],
+      // Cachée de la liste « / » pour qui n'a pas la permission par défaut ; le bot revérifie l'accès à chaque utilisation.
+      default_member_permissions: command.defaultPermission === null ? null : String(command.defaultPermission),
       options: command.subcommands
         ? command.subcommands.map(subcommand => ({
             type: ApplicationCommandOptionType.Subcommand,
