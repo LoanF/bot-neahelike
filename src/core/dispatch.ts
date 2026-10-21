@@ -10,7 +10,7 @@ import {
 import { getSettings, type GuildSettings } from "@/config/store";
 import { env } from "@/env";
 import { logger } from "@/logger";
-import { canUse, isModuleEnabled, requiredLabel } from "./access";
+import { canUse, isModuleEnabled, requiredLabel, unavailableTables } from "./access";
 import { normalizeChoice, parseBoolean, parseInteger, parseSnowflake, tokenizeWithIndex, type Token } from "./args";
 import { usage, type ArgValue, type CommandDef, type OptionDef, type SubcommandDef } from "./command";
 import { ANYONE, parseCustomId, type PanelInteraction } from "./components";
@@ -22,6 +22,11 @@ import { getRegistry } from "./registry";
 
 /** Message de refus si le module est coupé ou si le membre n'a pas l'accès requis. */
 function refusal(settings: GuildSettings, member: GuildMember, command: CommandDef): string | null {
+  const missing = unavailableTables(command.module);
+  if (missing) {
+    const label = getRegistry().module(command.module)?.label ?? command.module;
+    return `Le module **${label}** n'est pas encore disponible : la base n'a pas sa table (${missing.join(", ")}). Elle doit d'abord être ajoutée au schéma du site.`;
+  }
   if (!isModuleEnabled(settings, command.module)) {
     const label = getRegistry().module(command.module)?.label ?? command.module;
     return renderMessage(settings, "module.desactive", { module: label });

@@ -16,6 +16,8 @@ export interface BotModule {
   /** Emoji affiché dans les panneaux et l'aide. */
   icon: string;
   description: string;
+  /** Tables dont le module a besoin : s'il en manque une, le module est mis hors service au démarrage. */
+  tables?: string[];
   /** Module indispensable : ne peut pas être désactivé. */
   locked?: boolean;
   commands?: CommandDef[];
