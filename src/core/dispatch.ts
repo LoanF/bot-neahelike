@@ -1,6 +1,7 @@
 import {
   MessageFlags,
   type AutocompleteInteraction,
+  type ButtonInteraction,
   type ChatInputCommandInteraction,
   type Guild,
   type GuildMember,
@@ -255,7 +256,26 @@ async function runComponent(interaction: PanelInteraction) {
 
 // ─── Points d'entrée ────────────────────────────────────────────────────────
 
+/** Bouton cliqué en message privé : seuls les gestionnaires qui l'acceptent le reçoivent. */
+async function runDmButton(interaction: ButtonInteraction) {
+  const { prefix, ownerId, action, args } = parseCustomId(interaction.customId);
+  const handler = getRegistry().component(prefix);
+  if (!handler?.handleDm) return;
+  const settings = await getSettings(env().DISCORD_GUILD_ID);
+  if (ownerId !== ANYONE && ownerId !== interaction.user.id) return;
+  try {
+    await handler.handleDm(interaction, { settings, action, args });
+  } catch (error) {
+    if (!(error instanceof UserError)) throw error;
+    await interaction.reply({ embeds: [failure(settings, error.message)] });
+  }
+}
+
 export async function handleInteraction(interaction: Interaction) {
+  if (!interaction.inGuild()) {
+    if (interaction.isButton()) await runDmButton(interaction).catch(error => logger.error({ err: error, customId: interaction.customId }, "Bouton en MP en échec"));
+    return;
+  }
   if (!interaction.inCachedGuild() || interaction.guildId !== env().DISCORD_GUILD_ID) return;
   try {
     if (interaction.isChatInputCommand()) await runSlash(interaction);

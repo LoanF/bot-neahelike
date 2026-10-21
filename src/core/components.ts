@@ -1,4 +1,4 @@
-import type { MessageComponentInteraction, ModalSubmitInteraction } from "discord.js";
+import type { ButtonInteraction, MessageComponentInteraction, ModalSubmitInteraction } from "discord.js";
 import type { GuildSettings } from "@/config/store";
 
 export type PanelInteraction = MessageComponentInteraction<"cached"> | ModalSubmitInteraction<"cached">;
@@ -15,6 +15,8 @@ export interface ComponentHandler {
   /** Commande dont la permission est revérifiée à chaque clic. */
   command?: string;
   handle: (interaction: PanelInteraction, context: { settings: GuildSettings; action: string; args: string[] }) => Promise<unknown>;
+  /** Boutons cliqués en message privé (par exemple la note d'un ticket), avec la configuration du serveur. */
+  handleDm?: (interaction: ButtonInteraction, context: { settings: GuildSettings; action: string; args: string[] }) => Promise<unknown>;
 }
 
 const MAX_CUSTOM_ID = 100;
