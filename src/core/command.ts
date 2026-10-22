@@ -11,6 +11,9 @@ export const PERMISSION = {
   gestion: PermissionFlagsBits.ManageGuild,
   messages: PermissionFlagsBits.ManageMessages,
   moderation: PermissionFlagsBits.ModerateMembers,
+  expulsion: PermissionFlagsBits.KickMembers,
+  bannissement: PermissionFlagsBits.BanMembers,
+  salons: PermissionFlagsBits.ManageChannels,
 } as const;
 
 export type OptionType = "string" | "integer" | "boolean" | "user" | "role" | "channel";

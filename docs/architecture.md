@@ -54,6 +54,9 @@ Discord (passerelle + REST) ──► src/index.ts ──► modules (commandes,
 | `accueil` | Panneau `/accueil`, bienvenue et départ, autorôle, règlement à accepter, panneaux de rôles (boutons ou menu) |
 | `serveur` | Panneau `/serveur`, `/statut`, statut FiveM (dynamic.json), salons compteurs, `/soutien`, rôle soutien (tag ou textes autorisés dans le statut), vocaux temporaires |
 | `giveaways` | `/giveaway`, bouton Participer, tirage automatique toutes les 15 s (tables `bot_giveaways`, `bot_giveaway_entries`) |
+| `moderation` | Sanctions et casier (`/warn`, `/timeout`, `/kick`, `/ban`, `/tempban`, `/unban`, `/casier`), levée automatique des bannissements temporaires (table `bot_sanctions`) |
+| `salons` | `/clear`, `/lock`, `/unlock`, `/hide`, `/unhide`, `/slowmode`, `/nuke`, `/snipe` (dernier message supprimé gardé en mémoire 10 minutes) |
+| `infos` | `/userinfo`, `/serverinfo`, `/pic`, `/banner` |
 | `tickets` | Panneau `/tickets`, panneau public, salons de tickets, transcription HTML, note en MP, fermeture automatique (table `bot_tickets`) |
 | `logs` | Panneau `/logs`, écoute des messages, membres, vocal et du journal d'audit |
 | `embeds` | Créateur d'embeds `/embed` (brouillons gardés en mémoire) |

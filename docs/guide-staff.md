@@ -64,6 +64,16 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 - À la fin, le bot tire au sort parmi les participants encore sur le serveur (et porteurs du rôle exigé), met à jour le message et félicite les gagnants.
 - `terminer` tire au sort tout de suite, `relancer` refait un tirage en écartant les gagnants du dernier tirage, `annuler` clôt sans gagnant, `liste` montre ceux en cours. Le giveaway se désigne par l'identifiant ou le lien de son message.
 
+## Modération
+
+Chaque commande n'apparaît que pour les membres qui ont la permission Discord correspondante (Exclure, Expulser, Bannir, Gérer les messages, Gérer les salons) ; un accès réglé dans `/config` peut la remplacer.
+
+- **Sanctions** : `/warn`, `/timeout membre duree` (28 jours au plus), `/untimeout`, `/kick`, `/ban` (aussi par identifiant, même si la personne a quitté le serveur), `/tempban membre duree` (débanni automatiquement), `/unban`. Le membre reçoit un message privé avant la sanction (texte modifiable : `/config` ▸ Messages). Personne ne peut sanctionner un membre de rang égal ou supérieur au sien, ni le propriétaire.
+- **Casier** : `/casier voir @membre` liste ses sanctions numérotées (#12), avec l'auteur, la raison et l'état. `/casier retirer 12` retire une sanction ; si elle est en cours, le bannissement ou l'exclusion est levé aussi.
+- Les bannissements, expulsions et exclusions arrivent dans les logs par le journal d'audit ; les avertissements ont leur propre type de log, « Avertissements ».
+- **Salons** : `/clear nombre [membre]` (100 au plus, messages de moins de 14 jours, épinglés gardés), `/lock` et `/unlock`, `/hide` et `/unhide`, `/slowmode 10s` (0 pour retirer), `/nuke` pour recréer un salon vide après confirmation, `/snipe` pour revoir le dernier message supprimé (gardé 10 minutes, en mémoire seulement).
+- **Informations** : `/userinfo`, `/serverinfo`, `/pic`, `/banner`, ouvertes à tous.
+
 ## /logs : les logs du serveur
 
 - Choisissez un **type de log** dans le premier menu, puis son salon. Le bouton « Envoyer un essai » vérifie que tout fonctionne.

@@ -55,6 +55,12 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 | `/soutien` | Panneau du rôle soutien : rôle, tag du serveur, textes autorisés dans le statut (plusieurs) | Gérer le serveur |
 | `/statut` | État du serveur FiveM (en ligne, joueurs) | Tout le monde |
 | `/giveaway creer/terminer/relancer/annuler/liste` | Giveaways avec bouton Participer, rôle exigé, tirage automatique (tables `bot_giveaways`, `bot_giveaway_entries`) | Gérer le serveur |
+| `/warn`, `/timeout`, `/untimeout`, `/kick`, `/ban`, `/tempban`, `/unban` | Sanctions avec message privé au membre et inscription au casier (table `bot_sanctions`) | Exclure / Expulser / Bannir des membres |
+| `/casier voir/retirer` | Casier d'un membre, retrait d'une sanction par son numéro | Exclure temporairement des membres |
+| `/clear`, `/snipe` | Suppression en masse (d'un membre si précisé), dernier message supprimé | Gérer les messages |
+| `/lock`, `/unlock`, `/hide`, `/unhide`, `/slowmode` | Verrouiller, cacher un salon, mode lent | Gérer les salons |
+| `/nuke` | Recréer un salon vide (avec confirmation) | Gérer le serveur |
+| `/userinfo`, `/serverinfo`, `/pic`, `/banner` | Fiche d'un membre ou du serveur, avatar, bannière | Tout le monde |
 | `/tickets` | Panneau : catégories, rôles, questions, archives, publication du panneau public | Gérer le serveur |
 | `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe ou auteur) | Tout le monde |
 | `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
