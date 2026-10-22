@@ -115,6 +115,83 @@ export type Database = {
           },
         ]
       }
+      bot_giveaway_entries: {
+        Row: {
+          created_at: string
+          giveaway_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          giveaway_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          giveaway_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_giveaway_entries_giveaway_id_bot_giveaways_id_fk"
+            columns: ["giveaway_id"]
+            isOneToOne: false
+            referencedRelation: "bot_giveaways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_giveaways: {
+        Row: {
+          channel_id: string
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          ends_at: string
+          guild_id: string
+          host_id: string
+          id: string
+          message_id: string | null
+          prize: string
+          required_role_id: string | null
+          status: Database["public"]["Enums"]["giveaway_status"]
+          winner_count: number
+          winner_ids: string[]
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          ends_at: string
+          guild_id: string
+          host_id: string
+          id?: string
+          message_id?: string | null
+          prize: string
+          required_role_id?: string | null
+          status?: Database["public"]["Enums"]["giveaway_status"]
+          winner_count?: number
+          winner_ids?: string[]
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          ends_at?: string
+          guild_id?: string
+          host_id?: string
+          id?: string
+          message_id?: string | null
+          prize?: string
+          required_role_id?: string | null
+          status?: Database["public"]["Enums"]["giveaway_status"]
+          winner_count?: number
+          winner_ids?: string[]
+        }
+        Relationships: []
+      }
       bot_guild_config: {
         Row: {
           activity_text: string | null
@@ -263,6 +340,51 @@ export type Database = {
           id?: string
           name?: string
           weight?: number
+        }
+        Relationships: []
+      }
+      bot_sanctions: {
+        Row: {
+          created_at: string
+          ends_at: string | null
+          guild_id: string
+          id: string
+          moderator_id: string
+          number: number
+          reason: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by_id: string | null
+          type: Database["public"]["Enums"]["sanction_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at?: string | null
+          guild_id: string
+          id?: string
+          moderator_id: string
+          number?: never
+          reason: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by_id?: string | null
+          type: Database["public"]["Enums"]["sanction_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string | null
+          guild_id?: string
+          id?: string
+          moderator_id?: string
+          number?: never
+          reason?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by_id?: string | null
+          type?: Database["public"]["Enums"]["sanction_type"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -713,8 +835,14 @@ export type Database = {
         | "whitelistee"
         | "refusee"
       faction_kind: "affinite" | "creature"
+      giveaway_status: "en_cours" | "termine" | "annule"
       note_visibility: "equipe" | "admin"
       rank: "joueur" | "recruteur" | "admin" | "owner"
+      sanction_type:
+        | "avertissement"
+        | "exclusion"
+        | "expulsion"
+        | "bannissement"
       ticket_status: "ouvert" | "ferme"
     }
     CompositeTypes: {
@@ -852,8 +980,15 @@ export const Constants = {
         "refusee",
       ],
       faction_kind: ["affinite", "creature"],
+      giveaway_status: ["en_cours", "termine", "annule"],
       note_visibility: ["equipe", "admin"],
       rank: ["joueur", "recruteur", "admin", "owner"],
+      sanction_type: [
+        "avertissement",
+        "exclusion",
+        "expulsion",
+        "bannissement",
+      ],
       ticket_status: ["ouvert", "ferme"],
     },
   },

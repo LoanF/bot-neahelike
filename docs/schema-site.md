@@ -182,7 +182,7 @@ ALTER TABLE "bot_tickets" ENABLE ROW LEVEL SECURITY;
 
 ---
 
-## Étape 4 — Giveaways
+## Étape 4 — Giveaways (appliquée : migration 0016 du site)
 
 Deux tables : le giveaway lui-même et ses participants (une ligne par participant, pour qu'un clic ne réécrive jamais toute la liste).
 
@@ -240,4 +240,46 @@ Migration RLS (`pnpm drizzle-kit generate --custom --name activer_rls_giveaways`
 ```sql
 ALTER TABLE "bot_giveaways" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "bot_giveaway_entries" ENABLE ROW LEVEL SECURITY;
+```
+
+---
+
+## Étape 5 — Casier de modération (appliquée : migration 0016 du site)
+
+Une ligne par sanction, jamais supprimée : une sanction levée (débannissement, avertissement retiré) est marquée révoquée. Pas de clé étrangère vers `users` : on sanctionne aussi des membres sans compte sur le site.
+
+```ts
+export const sanctionType = pgEnum("sanction_type", ["avertissement", "exclusion", "expulsion", "bannissement"]);
+
+/** Casier de modération du bot. */
+export const botSanctions = pgTable(
+  "bot_sanctions",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** Numéro lisible de la sanction (#12), attribué par la base. */
+    number: integer().generatedAlwaysAsIdentity(),
+    guildId: text().notNull(),
+    userId: text().notNull(),
+    moderatorId: text().notNull(),
+    type: sanctionType().notNull(),
+    reason: text().notNull(),
+    /** Fin d'une exclusion temporaire ou d'un bannissement temporaire ; null : définitif ou sans durée. */
+    endsAt: timestamp({ withTimezone: true }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp({ withTimezone: true }),
+    revokedById: text(),
+    revokeReason: text(),
+  },
+  table => [
+    index("bot_sanctions_casier_idx").on(table.guildId, table.userId, table.createdAt),
+    // Bannissements temporaires encore actifs, levés automatiquement à échéance.
+    index("bot_sanctions_bans_a_lever_idx").on(table.endsAt).where(sql`${table.type} = 'bannissement' and ${table.revokedAt} is null and ${table.endsAt} is not null`),
+  ],
+);
+```
+
+Migration RLS (`pnpm drizzle-kit generate --custom --name activer_rls_sanctions`) :
+
+```sql
+ALTER TABLE "bot_sanctions" ENABLE ROW LEVEL SECURITY;
 ```

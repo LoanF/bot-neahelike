@@ -197,6 +197,14 @@ export function serverChange(
 
 // ─── Tickets ────────────────────────────────────────────────────────────────
 
+export function warningEvent(color: number, data: { number: number; userId: string; moderatorId: string; reason: string; revoked?: boolean }): EmbedBuilder {
+  return base("avertissement", color, `${data.revoked ? "Avertissement retiré" : "Avertissement"} · #${data.number}`).addFields(
+    { name: "Membre", value: who(data.userId), inline: true },
+    { name: "Par", value: who(data.moderatorId), inline: true },
+    { name: "Raison", value: truncate(data.reason) },
+  );
+}
+
 export function ticketEvent(
   color: number,
   title: string,

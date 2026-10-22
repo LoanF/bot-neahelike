@@ -1,24 +1,9 @@
-import { sql } from "@/db";
+import { sql, type Enums, type Tables } from "@/db";
 
-export type GiveawayStatus = "en_cours" | "termine" | "annule";
+export type GiveawayStatus = Enums<"giveaway_status">;
 
-/** Ligne de `bot_giveaways` (table créée par le site, voir docs/schema-site.md, étape 4). */
-export interface Giveaway {
-  id: string;
-  guild_id: string;
-  channel_id: string;
-  message_id: string | null;
-  prize: string;
-  description: string | null;
-  winner_count: number;
-  required_role_id: string | null;
-  host_id: string;
-  status: GiveawayStatus;
-  winner_ids: string[];
-  ends_at: string;
-  created_at: string;
-  ended_at: string | null;
-}
+/** Ligne de `bot_giveaways` (table du site, voir docs/schema-site.md, étape 4). */
+export type Giveaway = Tables<"bot_giveaways">;
 
 export async function createGiveaway(input: {
   guildId: string;

@@ -55,11 +55,7 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 
 - **Statut FiveM** : indiquez l'adresse du serveur (IP:port) et le lien de connexion. Publiez le statut dans un salon : il se met à jour chaque minute. Tout le monde peut taper `/statut`.
 - **Compteurs** : un salon par compteur (membres, joueurs en jeu, citoyens whitelistés). Prenez un salon vocal verrouillé ; son nom affiche la valeur (`{n}`). Mise à jour toutes les 10 minutes, limite imposée par Discord.
-- **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou l'un des **textes autorisés** dans son statut personnalisé (lien du Discord, nom du serveur…), et retiré sinon. Les majuscules et les accents ne comptent pas. Tout se règle depuis Discord, dans `/serveur` ▸ Rôle soutien ou avec `/soutien` :
-  - `/soutien role @Soutien` : rôle donné (vide pour arrêter) ;
-  - `/soutien ajouter discord.gg/neahelike` et `/soutien retirer …` : jusqu'à 25 textes ;
-  - `/soutien tag actif:oui` : compter le tag du serveur ;
-  - `/soutien voir`, `/soutien verifier` : réglages actuels, vérification immédiate de tout le monde.
+- **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou l'un des **textes autorisés** dans son statut personnalisé (lien du Discord, nom du serveur…), et retiré sinon. Les majuscules et les accents ne comptent pas. Tout se règle depuis Discord, dans le panneau `/soutien` (ou `/serveur` ▸ Rôle soutien) : menu pour choisir le rôle, bouton « Ajouter un texte » (jusqu'à 25), menu « Retirer un texte », bouton pour compter ou non le tag du serveur, et « Vérifier tout le monde ».
 - **Vocaux temporaires** : choisissez un salon créateur. En le rejoignant, un membre obtient son propre vocal dans la même catégorie, qu'il peut renommer et limiter ; le salon disparaît une fois vide.
 
 ## /giveaway : les giveaways
@@ -67,6 +63,16 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 - `/giveaway creer duree:2j lot:… gagnants:2` publie le giveaway avec un bouton **Participer** (un second clic retire la participation). Options : salon, rôle exigé, description.
 - À la fin, le bot tire au sort parmi les participants encore sur le serveur (et porteurs du rôle exigé), met à jour le message et félicite les gagnants.
 - `terminer` tire au sort tout de suite, `relancer` refait un tirage en écartant les gagnants du dernier tirage, `annuler` clôt sans gagnant, `liste` montre ceux en cours. Le giveaway se désigne par l'identifiant ou le lien de son message.
+
+## Modération
+
+Chaque commande n'apparaît que pour les membres qui ont la permission Discord correspondante (Exclure, Expulser, Bannir, Gérer les messages, Gérer les salons) ; un accès réglé dans `/config` peut la remplacer.
+
+- **Sanctions** : `/warn`, `/timeout membre duree` (28 jours au plus ; en préfixe, la durée s'écrit sans espace : `1h30`), `/untimeout`, `/kick`, `/ban` (aussi par identifiant, même si la personne a quitté le serveur), `/tempban membre duree` (débanni automatiquement), `/unban`. Le membre reçoit un message privé avant la sanction (texte modifiable : `/config` ▸ Messages). Personne ne peut sanctionner un membre de rang égal ou supérieur au sien, ni le propriétaire.
+- **Casier** : `/casier voir @membre` liste ses sanctions numérotées (#12), avec l'auteur, la raison et l'état. `/casier retirer 12` retire une sanction ; si elle est en cours, le bannissement ou l'exclusion est levé aussi. Retirer un bannissement demande la permission « Bannir des membres », et la hiérarchie des rôles s'applique comme pour sanctionner.
+- Les bannissements, expulsions et exclusions arrivent dans les logs par le journal d'audit ; les avertissements ont leur propre type de log, « Avertissements ».
+- **Salons** : `/clear nombre [membre]` (100 au plus, messages de moins de 14 jours, épinglés gardés), `/lock` et `/unlock`, `/hide` et `/unhide`, `/slowmode 10s` (0 pour retirer), `/nuke` pour recréer un salon vide après confirmation (refusé pour les salons réservés par Discord ; le nouveau salon a un autre identifiant, à choisir de nouveau dans les panneaux du bot s'il y servait), `/snipe` pour revoir le dernier message supprimé (gardé 10 minutes, en mémoire seulement).
+- **Informations** : `/userinfo`, `/serverinfo`, `/pic`, `/banner`, ouvertes à tous.
 
 ## /logs : les logs du serveur
 

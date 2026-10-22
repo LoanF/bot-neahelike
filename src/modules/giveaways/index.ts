@@ -7,7 +7,7 @@ import { embed, notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import type { BotModule } from "@/core/registry";
 import { logger } from "@/logger";
-import { MAX_WINNERS, MODULE, parseDuration, pickWinners } from "./logic";
+import { MAX_WINNERS, MODULE, parseGiveawayDuration, pickWinners } from "./logic";
 import { activeGiveaways, cancelGiveaway, createGiveaway, dropGiveaway, dueGiveaways, giveawayByMessage, setGiveawayMessage, setWinners } from "./store";
 import { announce, drawGiveaway, eligibleEntries, giveawayHandler, giveawayPayload, refreshGiveaway } from "./ui";
 
@@ -54,7 +54,7 @@ const giveaway = defineCommand({
   async run(ctx) {
     switch (ctx.subcommand) {
       case "creer": {
-        const duration = parseDuration(ctx.string("duree", true));
+        const duration = parseGiveawayDuration(ctx.string("duree", true));
         const target = ctx.channelArg("salon") ?? ctx.channel;
         if (!target?.isSendable()) throw new UserError("Ce salon ne peut pas recevoir de messages.");
         const role = ctx.role("role");

@@ -1,7 +1,7 @@
 import type { Guild } from "discord.js";
 import { describe, expect, it } from "vitest";
 import type { GuildSettings } from "@/config/store";
-import { parseDuration, pickWinners } from "@/modules/giveaways/logic";
+import { parseGiveawayDuration as parseDuration, pickWinners } from "@/modules/giveaways/logic";
 import type { Giveaway } from "@/modules/giveaways/store";
 import { eligible, giveawayPayload } from "@/modules/giveaways/ui";
 
@@ -43,7 +43,7 @@ describe("durée d'un giveaway", () => {
   it("refuse les durées illisibles, trop courtes ou trop longues", () => {
     expect(() => parseDuration("demain")).toThrow("Durée invalide");
     expect(() => parseDuration("2h ou 3h")).toThrow("Durée invalide");
-    expect(() => parseDuration("0m")).toThrow("au moins une minute");
+    expect(() => parseDuration("0m")).toThrow("au moins 1 minute");
     expect(() => parseDuration("31j")).toThrow("au plus 30 jours");
   });
 });

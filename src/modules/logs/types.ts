@@ -29,6 +29,7 @@ export const LOG_TYPES = [
   { id: "boost", label: "Boosts", emoji: "💎", category: "membres", description: "Nouveaux boosts du serveur" },
   { id: "bannissement", label: "Bannissements", emoji: "🔨", category: "moderation", description: "Bannissements et débannissements, avec l'auteur et la raison" },
   { id: "expulsion", label: "Expulsions", emoji: "👢", category: "moderation", description: "Membres expulsés, avec l'auteur et la raison" },
+  { id: "avertissement", label: "Avertissements", emoji: "⚠️", category: "moderation", description: "Avertissements donnés ou retirés avec le bot" },
   { id: "exclusion", label: "Exclusions temporaires", emoji: "⏳", category: "moderation", description: "Exclusions temporaires posées ou levées" },
   { id: "vocal", label: "Salons vocaux", emoji: "🔊", category: "vocal", description: "Entrées, sorties et changements de salon vocal" },
   { id: "salons", label: "Salons", emoji: "#️⃣", category: "serveur", description: "Salons créés, modifiés ou supprimés" },

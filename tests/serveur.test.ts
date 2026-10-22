@@ -18,7 +18,7 @@ describe("vie du serveur", async () => {
   setRegistry(new Registry(modules));
   const { counterName, parseAddress, parseDynamic, stripColors, supports, voiceName } = await import("@/modules/serveur/settings");
   const { counterValues, fetchFivem, statusPayload } = await import("@/modules/serveur/live");
-  const { parseJoinLink, renderServerPanel } = await import("@/modules/serveur/panel");
+  const { parseJoinLink, renderServerPanel, renderSupportPanel } = await import("@/modules/serveur/panel");
 
   const settingsWith = (server: unknown) =>
     ({
@@ -162,7 +162,6 @@ describe("vie du serveur", async () => {
 
   describe("textes autorisés pour le rôle soutien", async () => {
     const { addSupportText, MAX_SUPPORT_TEXTS, removeSupportText, serverSettings } = await import("@/modules/serveur/settings");
-    const { supportSummary, textChoices } = await import("@/modules/serveur/support");
 
     it("accepte plusieurs textes, sans doublon ni majuscules ou accents en double", () => {
       let texts = addSupportText([], "discord.gg/neahelike");
@@ -197,15 +196,19 @@ describe("vie du serveur", async () => {
       expect(serverSettings(settingsWith({ soutienTexte: "discord.gg/neahelike", soutienTextes: ["Néa"] })).soutienTextes).toEqual(["Néa", "discord.gg/neahelike"]);
     });
 
-    it("propose les textes à retirer pendant la saisie, et résume les réglages", () => {
-      const server = { soutienRoleId: "500000000000000001", soutienTag: true, soutienTextes: ["discord.gg/neahelike", "Néa Hélikè"] };
-      expect(textChoices(server, "nea")).toEqual([
-        { name: "discord.gg/neahelike", value: "discord.gg/neahelike" },
-        { name: "Néa Hélikè", value: "Néa Hélikè" },
-      ]);
-      expect(textChoices(server, "disc")).toHaveLength(1);
-      expect(supportSummary(server)).toContain("**Tag du serveur :** compté");
-      expect(supportSummary(server)).toContain("• `Néa Hélikè`");
+    it("/soutien ouvre le même panneau, réduit au rôle soutien et sans retour vers la vie du serveur", () => {
+      const payload = renderSupportPanel({ settings: settingsWith({ soutienTextes: ["discord.gg/neahelike"] }), guild, owner: "300000000000000001" });
+      checkLimits(payload);
+      const ids = (payload.components ?? []).flatMap(row => row.toJSON().components).map(component => ("custom_id" in component ? component.custom_id : ""));
+      expect(ids.every(id => id.startsWith("sou:300000000000000001:"))).toBe(true);
+      expect(ids).toEqual(expect.arrayContaining(["sou:300000000000000001:soutien-role", "sou:300000000000000001:soutien-ajouter", "sou:300000000000000001:soutien-retirer", "sou:300000000000000001:fermer"]));
+      expect(ids).not.toContain("sou:300000000000000001:go:accueil");
+      expect(payload.embeds![0]!.toJSON().title).toBe("💛 Rôle soutien");
+    });
+
+    it("le panneau de /soutien refuse les actions des autres sections", async () => {
+      const { supportPanel } = await import("@/modules/serveur/panel");
+      await expect(supportPanel.handle({} as never, { settings: settingsWith({}), action: "fivem-modifier", args: [] })).rejects.toThrow("hors du panneau du rôle soutien");
     });
 
     it("le panneau tient avec 25 textes", () => {

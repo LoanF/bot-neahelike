@@ -10,6 +10,8 @@ import { counterValues, lastFivemStatus, reconcileAllSupport, refreshFivem, stat
 import { addSupportText, COUNTERS, counterName, DEFAULT_VOICE_NAME, MAX_SUPPORT_TEXTS, parseAddress, removeSupportText, saveServerSettings, serverSettings, SUPPORT_TEXT_MAX, type CounterId, type ServerSettings } from "./settings";
 
 const PREFIX = "srv";
+/** Même panneau, réduit au rôle soutien, ouvert par `/soutien`. */
+const SUPPORT_PREFIX = "sou";
 
 const GUIDE =
   "**Statut FiveM** : indiquez l'adresse du serveur (IP:port) et, si vous voulez, le lien de connexion (cfx.re/join/…). Publiez le statut dans un salon : il se met à jour chaque minute. `/statut` le montre à tout le monde.\n" +
@@ -22,10 +24,12 @@ interface View {
   guild: Guild;
   owner: string;
   notice?: string;
+  /** `SUPPORT_PREFIX` : panneau du rôle soutien seul, sans retour vers la vie du serveur. */
+  prefix?: string;
 }
 
 function id(view: View, action: string, ...args: string[]) {
-  return customId(PREFIX, view.owner, action, ...args);
+  return customId(view.prefix ?? PREFIX, view.owner, action, ...args);
 }
 
 function withNotice(view: View, payload: Payload): Payload {
@@ -40,7 +44,9 @@ const channel = (channelId?: string) => (channelId ? `<#${channelId}>` : "*Aucun
 
 function back(view: View) {
   return row(
-    button(id(view, "go", "accueil"), "Retour", { emoji: ICON.retour, style: ButtonStyle.Secondary }),
+    view.prefix === SUPPORT_PREFIX
+      ? button(id(view, "fermer"), "Fermer", { emoji: ICON.fermer, style: ButtonStyle.Secondary })
+      : button(id(view, "go", "accueil"), "Retour", { emoji: ICON.retour, style: ButtonStyle.Secondary }),
     button(id(view, "aide"), "Aide", { emoji: ICON.aide, style: ButtonStyle.Secondary }),
   );
 }
@@ -198,6 +204,7 @@ function publishView(view: View): Payload {
 }
 
 export function renderServerPanel(view: View, target = "accueil"): Payload {
+  if (view.prefix === SUPPORT_PREFIX) return supportView(view);
   switch (target) {
     case "fivem":
       return fivemView(view);
@@ -216,9 +223,9 @@ export function renderServerPanel(view: View, target = "accueil"): Payload {
 
 // ─── Actions ────────────────────────────────────────────────────────────────
 
-async function show(interaction: PanelInteraction, target: string, notice?: string) {
+async function show(interaction: PanelInteraction, prefix: string, target: string, notice?: string) {
   const settings = await getSettings(interaction.guildId);
-  const payload = renderServerPanel({ settings, guild: interaction.guild, owner: interaction.user.id, notice }, target);
+  const payload = renderServerPanel({ settings, guild: interaction.guild, owner: interaction.user.id, notice, prefix }, target);
   if (interaction.deferred || interaction.replied) await interaction.editReply(payload);
   else if (interaction.isModalSubmit() && !interaction.isFromMessage()) await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
   else await interaction.update(payload);
@@ -229,9 +236,9 @@ function submitted(interaction: PanelInteraction): ModalSubmitInteraction<"cache
   return interaction;
 }
 
-async function commit(interaction: PanelInteraction, settings: GuildSettings, next: ServerSettings, target: string, notice: string) {
+async function commit(interaction: PanelInteraction, prefix: string, settings: GuildSettings, next: ServerSettings, target: string, notice: string) {
   await saveServerSettings(settings, next);
-  return show(interaction, target, notice);
+  return show(interaction, prefix, target, notice);
 }
 
 /** Lien de connexion : https uniquement. */
@@ -248,175 +255,193 @@ export function parseJoinLink(input: string | null): string | undefined {
   return url.toString();
 }
 
-export const serverPanel: ComponentHandler = {
-  prefix: PREFIX,
-  command: "serveur",
-  async handle(interaction, { settings, action, args }) {
-    const server = serverSettings(settings);
-    const view: View = { settings, guild: interaction.guild, owner: interaction.user.id };
-    const openModal = (form: ReturnType<typeof modal>) => {
-      if (interaction.isModalSubmit()) throw new Error("Un formulaire ne peut pas en ouvrir un autre.");
-      return interaction.showModal(form);
-    };
+/** Actions du panneau du rôle soutien, seules permises depuis `/soutien`. */
+const SUPPORT_ACTIONS = new Set(["go", "aide", "fermer", "soutien-role", "soutien-tag", "soutien-ajouter", "soutien-ajouter-ok", "soutien-retirer", "soutien-verifier"]);
 
-    switch (action) {
-      case "go":
-        return show(interaction, interaction.isStringSelectMenu() ? (interaction.values[0] ?? "accueil") : args.join(":"));
-      case "aide":
-        return interaction.reply({ embeds: [embed(settings, "parchemin").setTitle(`${ICON.aide} Aide · Vie du serveur`).setDescription(GUIDE)], flags: MessageFlags.Ephemeral });
-      case "fermer":
-        await interaction.deferUpdate();
-        return interaction.deleteReply();
+function panelHandler(prefix: string, command: string): ComponentHandler {
+  return {
+    prefix,
+    command,
+    handle: async (interaction, context) => {
+      if (prefix === SUPPORT_PREFIX && !SUPPORT_ACTIONS.has(context.action)) throw new Error(`Action hors du panneau du rôle soutien : ${context.action}`);
+      return handlePanel(prefix, interaction, context);
+    },
+  };
+}
 
-      case "fivem-modifier":
-        return openModal(
-          modal(id(view, "fivem-modifier-ok"), "Serveur FiveM", [
-            { id: "adresse", label: "Adresse (IP:port, vide pour retirer)", value: server.fivemAdresse, maxLength: 100, placeholder: "51.75.12.34:30120" },
-            { id: "lien", label: "Lien de connexion (facultatif)", value: server.fivemLien, maxLength: 200, placeholder: "https://cfx.re/join/abc123" },
-          ]),
-        );
-      case "fivem-modifier-ok": {
-        const form = submitted(interaction);
-        const address = field(form, "adresse");
-        if (address) parseAddress(address);
-        const next = { ...server, fivemAdresse: address ?? undefined, fivemLien: parseJoinLink(field(form, "lien")) };
-        await interaction.deferUpdate();
-        await saveServerSettings(settings, next);
-        const status = await refreshFivem(next);
-        return show(interaction, "fivem", status ? (status.online ? `Serveur joint : ${status.players}/${status.max} joueurs.` : "Adresse enregistrée, mais le serveur ne répond pas.") : "Serveur FiveM retiré.");
-      }
-      case "fivem-tester": {
-        await interaction.deferUpdate();
-        const status = await refreshFivem(server);
-        return show(interaction, "fivem", status?.online ? `En ligne : ${status.players}/${status.max} joueurs.` : "Le serveur ne répond pas.");
-      }
-      case "publier": {
-        if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
-        const target = interaction.guild.channels.cache.get(interaction.values[0] ?? "");
-        const me = interaction.guild.members.me;
-        if (!target?.isSendable() || !me || !target.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
-          throw new UserError("Le bot ne peut pas publier dans ce salon : il lui faut Voir le salon, Envoyer des messages et Intégrer des liens.");
-        }
-        await interaction.deferUpdate();
-        await refreshFivem(server);
-        const message = await target.send(statusPayload(settings, server, lastFivemStatus(), interaction.guild.name));
-        if (server.statutMessage) {
-          const previous = interaction.guild.channels.cache.get(server.statutMessage.channelId);
-          if (previous?.isTextBased()) await previous.messages.delete(server.statutMessage.messageId).catch(() => {});
-        }
-        await saveServerSettings(settings, { ...server, statutMessage: { channelId: target.id, messageId: message.id } });
-        return show(interaction, "fivem", `Statut publié dans ${target}.`);
-      }
+export const serverPanel = panelHandler(PREFIX, "serveur");
+export const supportPanel = panelHandler(SUPPORT_PREFIX, "soutien");
 
-      case "compteur": {
-        if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
-        const counter = args[0] as CounterId;
-        if (!(counter in COUNTERS)) throw new Error(`Compteur inconnu : ${counter}`);
-        const channelId = interaction.values[0];
-        if (channelId) {
-          const target = interaction.guild.channels.cache.get(channelId);
-          const me = interaction.guild.members.me;
-          if (!target || !me || !target.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels])) {
-            throw new UserError("Le bot doit pouvoir voir et gérer ce salon pour le renommer.");
-          }
-        }
-        const current = server.compteurs?.[counter];
-        const compteurs = { ...server.compteurs, [counter]: channelId ? { channelId, name: current?.name ?? COUNTERS[counter].defaultName } : undefined };
-        await interaction.deferUpdate();
-        const next = { ...server, compteurs };
-        await saveServerSettings(settings, next);
-        // Sans attendre : Discord peut faire patienter un renommage plusieurs minutes.
-        void updateCounters(interaction.guild, next).catch(() => {});
-        return show(interaction, "compteurs", channelId ? `${COUNTERS[counter].label} affiché dans <#${channelId}>.` : `${COUNTERS[counter].label} : compteur arrêté.`);
-      }
-      case "compteurs-noms":
-        return openModal(
-          modal(
-            id(view, "compteurs-noms-ok"),
-            "Noms des compteurs",
-            (Object.keys(COUNTERS) as CounterId[]).map(counter => ({
-              id: counter,
-              label: `${COUNTERS[counter].label} ({n} = valeur)`,
-              value: server.compteurs?.[counter]?.name ?? COUNTERS[counter].defaultName,
-              maxLength: 90,
-              placeholder: COUNTERS[counter].defaultName,
-            })),
-          ),
-        );
-      case "compteurs-noms-ok": {
-        const form = submitted(interaction);
-        const compteurs = { ...server.compteurs };
-        for (const counter of Object.keys(COUNTERS) as CounterId[]) {
-          const name = field(form, counter) ?? COUNTERS[counter].defaultName;
-          if (!name.includes("{n}")) throw new UserError(`Le nom du compteur « ${COUNTERS[counter].label} » doit contenir {n}, remplacé par la valeur.`);
-          const current = compteurs[counter];
-          if (current) compteurs[counter] = { ...current, name };
-        }
-        return commit(interaction, settings, { ...server, compteurs }, "compteurs", "Noms enregistrés : les salons seront renommés sous 10 minutes.");
-      }
+/** Panneau du rôle soutien seul, ouvert par `/soutien`. */
+export function renderSupportPanel(view: Omit<View, "prefix">): Payload {
+  return renderServerPanel({ ...view, prefix: SUPPORT_PREFIX }, "soutien");
+}
 
-      case "soutien-role": {
-        if (!interaction.isRoleSelectMenu()) throw new Error("Menu de rôles attendu.");
-        const roleId = interaction.values[0];
-        if (roleId) {
-          const role = interaction.guild.roles.cache.get(roleId);
-          const problem = role ? roleProblem(role, interaction.guild.id, interaction.guild.members.me?.roles.highest.position ?? 0) : "rôle introuvable";
-          if (problem) throw new UserError(problem);
-        }
-        return commit(interaction, settings, { ...server, soutienRoleId: roleId }, "soutien", roleId ? `Rôle soutien : <@&${roleId}>.` : "Plus de rôle soutien.");
-      }
-      case "soutien-tag":
-        return commit(interaction, settings, { ...server, soutienTag: !server.soutienTag }, "soutien", server.soutienTag ? "Le tag du serveur n'est plus compté." : "Le tag du serveur donne le rôle soutien.");
-      case "soutien-ajouter":
-        return openModal(
-          modal(id(view, "soutien-ajouter-ok"), "Texte autorisé dans le statut", [
-            { id: "texte", label: "Texte à chercher dans le statut", required: true, maxLength: SUPPORT_TEXT_MAX, placeholder: "discord.gg/neahelike" },
-          ]),
-        );
-      case "soutien-ajouter-ok": {
-        const text = field(submitted(interaction), "texte") ?? "";
-        const soutienTextes = addSupportText(server.soutienTextes ?? [], text);
-        return commit(interaction, settings, { ...server, soutienTextes }, "soutien", `Un statut contenant « ${text} » donne le rôle soutien.`);
-      }
-      case "soutien-retirer": {
-        if (!interaction.isStringSelectMenu()) throw new Error("Menu attendu.");
-        const text = (server.soutienTextes ?? [])[Number(interaction.values[0])];
-        if (!text) return show(interaction, "soutien");
-        return commit(interaction, settings, { ...server, soutienTextes: removeSupportText(server.soutienTextes ?? [], text) }, "soutien", `« ${text} » retiré des textes du rôle soutien.`);
-      }
-      case "soutien-verifier": {
-        await interaction.deferUpdate();
-        await reconcileAllSupport(interaction.guild, server);
-        return show(interaction, "soutien", "Rôle soutien vérifié pour les membres connus du bot.");
-      }
+async function handlePanel(prefix: string, interaction: PanelInteraction, { settings, action, args }: { settings: GuildSettings; action: string; args: string[] }) {
+  const server = serverSettings(settings);
+  const view: View = { settings, guild: interaction.guild, owner: interaction.user.id, prefix };
+  const openModal = (form: ReturnType<typeof modal>) => {
+    if (interaction.isModalSubmit()) throw new Error("Un formulaire ne peut pas en ouvrir un autre.");
+    return interaction.showModal(form);
+  };
 
-      case "vocal-createur": {
-        if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
-        const channelId = interaction.values[0];
-        if (channelId) {
-          const target = interaction.guild.channels.cache.get(channelId);
-          const me = interaction.guild.members.me;
-          const parent = target?.parent ?? target;
-          if (!parent || !me || !parent.permissionsFor(me).has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers])) {
-            throw new UserError("Le bot doit pouvoir gérer les salons et déplacer les membres dans cette catégorie.");
-          }
-        }
-        return commit(interaction, settings, { ...server, vocalCreateurId: channelId }, "vocaux", channelId ? `Rejoindre <#${channelId}> crée un vocal temporaire.` : "Vocaux temporaires désactivés.");
-      }
-      case "vocal-modifier":
-        return openModal(
-          modal(id(view, "vocal-modifier-ok"), "Vocaux temporaires", [
-            { id: "nom", label: "Nom ({user.name} = membre)", value: server.vocalNom ?? DEFAULT_VOICE_NAME, maxLength: 90 },
-            { id: "limite", label: "Limite de membres (0 = aucune)", value: String(server.vocalLimite ?? 0), maxLength: 2 },
-          ]),
-        );
-      case "vocal-modifier-ok": {
-        const form = submitted(interaction);
-        const limit = Number(field(form, "limite") ?? 0);
-        if (!Number.isInteger(limit) || limit < 0 || limit > 99) throw new UserError("La limite doit être un nombre entre 0 et 99.");
-        return commit(interaction, settings, { ...server, vocalNom: field(form, "nom") ?? undefined, vocalLimite: limit || undefined }, "vocaux", "Vocaux temporaires enregistrés.");
-      }
+  switch (action) {
+    case "go":
+      return show(interaction, prefix, interaction.isStringSelectMenu() ? (interaction.values[0] ?? "accueil") : args.join(":"));
+    case "aide":
+      return interaction.reply({ embeds: [embed(settings, "parchemin").setTitle(`${ICON.aide} Aide · Vie du serveur`).setDescription(GUIDE)], flags: MessageFlags.Ephemeral });
+    case "fermer":
+      await interaction.deferUpdate();
+      return interaction.deleteReply();
+
+    case "fivem-modifier":
+      return openModal(
+        modal(id(view, "fivem-modifier-ok"), "Serveur FiveM", [
+          { id: "adresse", label: "Adresse (IP:port, vide pour retirer)", value: server.fivemAdresse, maxLength: 100, placeholder: "51.75.12.34:30120" },
+          { id: "lien", label: "Lien de connexion (facultatif)", value: server.fivemLien, maxLength: 200, placeholder: "https://cfx.re/join/abc123" },
+        ]),
+      );
+    case "fivem-modifier-ok": {
+      const form = submitted(interaction);
+      const address = field(form, "adresse");
+      if (address) parseAddress(address);
+      const next = { ...server, fivemAdresse: address ?? undefined, fivemLien: parseJoinLink(field(form, "lien")) };
+      await interaction.deferUpdate();
+      await saveServerSettings(settings, next);
+      const status = await refreshFivem(next);
+      return show(interaction, prefix, "fivem", status ? (status.online ? `Serveur joint : ${status.players}/${status.max} joueurs.` : "Adresse enregistrée, mais le serveur ne répond pas.") : "Serveur FiveM retiré.");
     }
-    throw new Error(`Action de panneau inconnue : ${action}`);
-  },
-};
+    case "fivem-tester": {
+      await interaction.deferUpdate();
+      const status = await refreshFivem(server);
+      return show(interaction, prefix, "fivem", status?.online ? `En ligne : ${status.players}/${status.max} joueurs.` : "Le serveur ne répond pas.");
+    }
+    case "publier": {
+      if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
+      const target = interaction.guild.channels.cache.get(interaction.values[0] ?? "");
+      const me = interaction.guild.members.me;
+      if (!target?.isSendable() || !me || !target.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+        throw new UserError("Le bot ne peut pas publier dans ce salon : il lui faut Voir le salon, Envoyer des messages et Intégrer des liens.");
+      }
+      await interaction.deferUpdate();
+      await refreshFivem(server);
+      const message = await target.send(statusPayload(settings, server, lastFivemStatus(), interaction.guild.name));
+      if (server.statutMessage) {
+        const previous = interaction.guild.channels.cache.get(server.statutMessage.channelId);
+        if (previous?.isTextBased()) await previous.messages.delete(server.statutMessage.messageId).catch(() => {});
+      }
+      await saveServerSettings(settings, { ...server, statutMessage: { channelId: target.id, messageId: message.id } });
+      return show(interaction, prefix, "fivem", `Statut publié dans ${target}.`);
+    }
+
+    case "compteur": {
+      if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
+      const counter = args[0] as CounterId;
+      if (!(counter in COUNTERS)) throw new Error(`Compteur inconnu : ${counter}`);
+      const channelId = interaction.values[0];
+      if (channelId) {
+        const target = interaction.guild.channels.cache.get(channelId);
+        const me = interaction.guild.members.me;
+        if (!target || !me || !target.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels])) {
+          throw new UserError("Le bot doit pouvoir voir et gérer ce salon pour le renommer.");
+        }
+      }
+      const current = server.compteurs?.[counter];
+      const compteurs = { ...server.compteurs, [counter]: channelId ? { channelId, name: current?.name ?? COUNTERS[counter].defaultName } : undefined };
+      await interaction.deferUpdate();
+      const next = { ...server, compteurs };
+      await saveServerSettings(settings, next);
+      // Sans attendre : Discord peut faire patienter un renommage plusieurs minutes.
+      void updateCounters(interaction.guild, next).catch(() => {});
+      return show(interaction, prefix, "compteurs", channelId ? `${COUNTERS[counter].label} affiché dans <#${channelId}>.` : `${COUNTERS[counter].label} : compteur arrêté.`);
+    }
+    case "compteurs-noms":
+      return openModal(
+        modal(
+          id(view, "compteurs-noms-ok"),
+          "Noms des compteurs",
+          (Object.keys(COUNTERS) as CounterId[]).map(counter => ({
+            id: counter,
+            label: `${COUNTERS[counter].label} ({n} = valeur)`,
+            value: server.compteurs?.[counter]?.name ?? COUNTERS[counter].defaultName,
+            maxLength: 90,
+            placeholder: COUNTERS[counter].defaultName,
+          })),
+        ),
+      );
+    case "compteurs-noms-ok": {
+      const form = submitted(interaction);
+      const compteurs = { ...server.compteurs };
+      for (const counter of Object.keys(COUNTERS) as CounterId[]) {
+        const name = field(form, counter) ?? COUNTERS[counter].defaultName;
+        if (!name.includes("{n}")) throw new UserError(`Le nom du compteur « ${COUNTERS[counter].label} » doit contenir {n}, remplacé par la valeur.`);
+        const current = compteurs[counter];
+        if (current) compteurs[counter] = { ...current, name };
+      }
+      return commit(interaction, prefix, settings, { ...server, compteurs }, "compteurs", "Noms enregistrés : les salons seront renommés sous 10 minutes.");
+    }
+
+    case "soutien-role": {
+      if (!interaction.isRoleSelectMenu()) throw new Error("Menu de rôles attendu.");
+      const roleId = interaction.values[0];
+      if (roleId) {
+        const role = interaction.guild.roles.cache.get(roleId);
+        const problem = role ? roleProblem(role, interaction.guild.id, interaction.guild.members.me?.roles.highest.position ?? 0) : "rôle introuvable";
+        if (problem) throw new UserError(problem);
+      }
+      return commit(interaction, prefix, settings, { ...server, soutienRoleId: roleId }, "soutien", roleId ? `Rôle soutien : <@&${roleId}>.` : "Plus de rôle soutien.");
+    }
+    case "soutien-tag":
+      return commit(interaction, prefix, settings, { ...server, soutienTag: !server.soutienTag }, "soutien", server.soutienTag ? "Le tag du serveur n'est plus compté." : "Le tag du serveur donne le rôle soutien.");
+    case "soutien-ajouter":
+      return openModal(
+        modal(id(view, "soutien-ajouter-ok"), "Texte autorisé dans le statut", [
+          { id: "texte", label: "Texte à chercher dans le statut", required: true, maxLength: SUPPORT_TEXT_MAX, placeholder: "discord.gg/neahelike" },
+        ]),
+      );
+    case "soutien-ajouter-ok": {
+      const text = field(submitted(interaction), "texte") ?? "";
+      const soutienTextes = addSupportText(server.soutienTextes ?? [], text);
+      return commit(interaction, prefix, settings, { ...server, soutienTextes }, "soutien", `Un statut contenant « ${text} » donne le rôle soutien.`);
+    }
+    case "soutien-retirer": {
+      if (!interaction.isStringSelectMenu()) throw new Error("Menu attendu.");
+      const text = (server.soutienTextes ?? [])[Number(interaction.values[0])];
+      if (!text) return show(interaction, prefix, "soutien");
+      return commit(interaction, prefix, settings, { ...server, soutienTextes: removeSupportText(server.soutienTextes ?? [], text) }, "soutien", `« ${text} » retiré des textes du rôle soutien.`);
+    }
+    case "soutien-verifier": {
+      await interaction.deferUpdate();
+      await reconcileAllSupport(interaction.guild, server);
+      return show(interaction, prefix, "soutien", "Rôle soutien vérifié pour les membres connus du bot.");
+    }
+
+    case "vocal-createur": {
+      if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
+      const channelId = interaction.values[0];
+      if (channelId) {
+        const target = interaction.guild.channels.cache.get(channelId);
+        const me = interaction.guild.members.me;
+        const parent = target?.parent ?? target;
+        if (!parent || !me || !parent.permissionsFor(me).has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers])) {
+          throw new UserError("Le bot doit pouvoir gérer les salons et déplacer les membres dans cette catégorie.");
+        }
+      }
+      return commit(interaction, prefix, settings, { ...server, vocalCreateurId: channelId }, "vocaux", channelId ? `Rejoindre <#${channelId}> crée un vocal temporaire.` : "Vocaux temporaires désactivés.");
+    }
+    case "vocal-modifier":
+      return openModal(
+        modal(id(view, "vocal-modifier-ok"), "Vocaux temporaires", [
+          { id: "nom", label: "Nom ({user.name} = membre)", value: server.vocalNom ?? DEFAULT_VOICE_NAME, maxLength: 90 },
+          { id: "limite", label: "Limite de membres (0 = aucune)", value: String(server.vocalLimite ?? 0), maxLength: 2 },
+        ]),
+      );
+    case "vocal-modifier-ok": {
+      const form = submitted(interaction);
+      const limit = Number(field(form, "limite") ?? 0);
+      if (!Number.isInteger(limit) || limit < 0 || limit > 99) throw new UserError("La limite doit être un nombre entre 0 et 99.");
+      return commit(interaction, prefix, settings, { ...server, vocalNom: field(form, "nom") ?? undefined, vocalLimite: limit || undefined }, "vocaux", "Vocaux temporaires enregistrés.");
+    }
+  }
+  throw new Error(`Action de panneau inconnue : ${action}`);
+}
