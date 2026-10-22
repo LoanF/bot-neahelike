@@ -182,7 +182,7 @@ ALTER TABLE "bot_tickets" ENABLE ROW LEVEL SECURITY;
 
 ---
 
-## Étape 4 — Giveaways
+## Étape 4 — Giveaways (appliquée : migration 0016 du site)
 
 Deux tables : le giveaway lui-même et ses participants (une ligne par participant, pour qu'un clic ne réécrive jamais toute la liste).
 
@@ -244,7 +244,7 @@ ALTER TABLE "bot_giveaway_entries" ENABLE ROW LEVEL SECURITY;
 
 ---
 
-## Étape 5 — Casier de modération
+## Étape 5 — Casier de modération (appliquée : migration 0016 du site)
 
 Une ligne par sanction, jamais supprimée : une sanction levée (débannissement, avertissement retiré) est marquée révoquée. Pas de clé étrangère vers `users` : on sanctionne aussi des membres sans compte sur le site.
 

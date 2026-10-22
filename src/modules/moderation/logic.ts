@@ -1,4 +1,5 @@
 import { DAY, formatDuration, parseDuration } from "@/core/duration";
+import type { Enums } from "@/db";
 
 export const MODULE = "moderation";
 
@@ -6,7 +7,7 @@ export const MODULE = "moderation";
 export const MAX_TIMEOUT_MS = 28 * DAY;
 export const MAX_TEMPBAN_MS = 365 * DAY;
 
-export type SanctionType = "avertissement" | "exclusion" | "expulsion" | "bannissement";
+export type SanctionType = Enums<"sanction_type">;
 
 export const SANCTION_LABELS: Record<SanctionType, { label: string; emoji: string }> = {
   avertissement: { label: "Avertissement", emoji: "⚠️" },

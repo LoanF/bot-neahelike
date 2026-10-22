@@ -1,21 +1,8 @@
-import { sql } from "@/db";
+import { sql, type Tables } from "@/db";
 import type { SanctionType } from "./logic";
 
-/** Ligne de `bot_sanctions` (table créée par le site, voir docs/schema-site.md, étape 5). */
-export interface Sanction {
-  id: string;
-  number: number;
-  guild_id: string;
-  user_id: string;
-  moderator_id: string;
-  type: SanctionType;
-  reason: string;
-  ends_at: string | null;
-  created_at: string;
-  revoked_at: string | null;
-  revoked_by_id: string | null;
-  revoke_reason: string | null;
-}
+/** Ligne de `bot_sanctions` (table du site, voir docs/schema-site.md, étape 5). */
+export type Sanction = Tables<"bot_sanctions">;
 
 export async function addSanction(input: { guildId: string; userId: string; moderatorId: string; type: SanctionType; reason: string; endsAt?: Date | null }): Promise<Sanction> {
   const [sanction] = await sql()<Sanction[]>`
