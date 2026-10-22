@@ -10,10 +10,8 @@ describe("statut de candidature", async () => {
     DISCORD_BOT_TOKEN: "test",
     DISCORD_GUILD_ID: "100000000000000001",
     SITE_URL: "https://example.test/",
-    DISCORD_ROLE_STAFF: "800000000000000001",
-    DISCORD_ROLE_RECRUTEUR: "800000000000000002",
-    DISCORD_ROLE_ASPIRANT: ASPIRANT,
-    DISCORD_ROLE_HELIKEEN: HELIKEEN,
+    DISCORD_ROLE_ATTENTE_WL: ASPIRANT,
+    DISCORD_ROLE_WL: HELIKEEN,
   });
   const { portalUrl } = await import("@/modules/site/commands");
   const { reapplyDate, statusKey, statusVars } = await import("@/modules/site/applications");

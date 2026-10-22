@@ -50,11 +50,16 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 |---|---|---|
 | `/config` | Panneau : général, modules, accès, commandes, profil du bot, messages | Gérer le serveur |
 | `/logs` | Panneau : quel salon reçoit quel type de log | Gérer le serveur |
+| `/accueil` | Panneau : bienvenue et départ, rôles à l'arrivée, règlement à accepter, panneaux de rôles en libre-service | Gérer le serveur |
+| `/serveur` | Panneau : statut FiveM, salons compteurs, rôle soutien, vocaux temporaires | Gérer le serveur |
+| `/soutien voir/role/tag/ajouter/retirer/verifier` | Rôle soutien : tag du serveur et textes autorisés dans le statut (plusieurs) | Gérer le serveur |
+| `/statut` | État du serveur FiveM (en ligne, joueurs) | Tout le monde |
+| `/giveaway creer/terminer/relancer/annuler/liste` | Giveaways avec bouton Participer, rôle exigé, tirage automatique (tables `bot_giveaways`, `bot_giveaway_entries`) | Gérer le serveur |
 | `/tickets` | Panneau : catégories, rôles, questions, archives, publication du panneau public | Gérer le serveur |
 | `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe ou auteur) | Tout le monde |
 | `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
 | `/fiche @joueur` | Compte, candidature et décision d'un joueur, lien vers sa fiche staff (réponse privée) | Gérer les messages |
-| `/site` | Salon de logs staff, resynchronisation des rangs | Gérer le serveur |
+| `/site` | Salon de logs staff, rôles des rangs du site, resynchronisation de la présence | Gérer le serveur |
 | `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Les mêmes réglages qu'en panneau, en une commande | Gérer le serveur |
 | `/aide` | Les commandes accessibles, module par module, avec des exemples | Tout le monde |
 | `/candidature lien/statut` | Lien vers le portail et état de la candidature (réponse privée) | Tout le monde |
@@ -67,9 +72,11 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 
 ## Lien avec le site
 
-- **Rangs du site** : ils découlent uniquement des rôles Discord (`DISCORD_ROLE_STAFF`, `DISCORD_ROLE_RECRUTEUR`, plusieurs ID séparés par des virgules ; un seul rôle suffit). Le bot les répercute en temps réel sur `users` (arrivée, départ, changement de rôles) et journalise `rang.change`, `discord.rejoint`, `discord.quitte`, comme le site.
+- **Rangs du site** (joueur, recruteur, admin, owner) : calculés par le site seul (owners, rôles réglés sur le site dans `role_ranks`). Le bot ne les écrit jamais : quand les rôles d'un membre changent, il remet `users.roles_synced_at` à vide pour que le site relise le rang aussitôt.
+- **Présence** : le bot tient `users.in_guild` (et pseudo, avatar) à jour en temps réel et journalise `discord.rejoint` / `discord.quitte`, comme le site.
+- **Rôles Discord** : le site donne et retire lui-même les rôles du parcours (« attente de wl », « Magistrat (wl) », « Novice (Non WL) ») avec le token de l'application, même bot éteint. Le rôle du bot doit être placé au-dessus de ces rôles dans la liste du serveur.
 - **Resynchronisation complète** au démarrage et après une coupure de la passerelle : seuls les écarts sont écrits. Le bot ne crée jamais de compte : seuls les comptes déjà liés au site sont mis à jour.
-- **Rôles du parcours** (« attente de wl », « Magistrat (wl) ») : attribués par le site lui-même ; le bot les lit pour `/candidature statut` quand le joueur n'a pas de candidature sur le portail.
+- **Rôles du parcours** : le bot les lit seulement, pour `/candidature statut` quand le joueur n'a pas de candidature sur le portail.
 - **Candidatures** : `/candidature statut` et `/fiche` lisent `applications` (dernière candidature du joueur) ; le bot n'y écrit jamais.
 - **Salon de logs staff** : `/site salon-logs #salon`. Changements de rang, et décisions du site relayées depuis le journal `events` (sondé toutes les 20 s, curseur gardé dans les réglages du module : au premier démarrage, l'historique n'est pas republié).
 

@@ -10,9 +10,9 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
   | Commandes | Permission Discord |
   |---|---|
-  | `/config`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
+  | `/config`, `/accueil`, `/serveur`, `/soutien`, `/giveaway`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
   | `/embed`, `/fiche` | Gérer les messages |
-  | `/aide`, `/ping`, `/candidature`, `/ticket` | Tout le monde |
+  | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut` | Tout le monde |
 
 - Les **administrateurs Discord** peuvent toujours tout utiliser.
 - Les panneaux et les réponses privées ne sont visibles que de la personne qui a lancé la commande. Avec le préfixe, le panneau s'affiche dans le salon, mais seul son auteur peut cliquer dessus.
@@ -23,7 +23,8 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 2. `/config`, puis **Modules** : coupez ce dont vous n'avez pas besoin.
 3. `/logs` : choisissez où partent les logs.
 4. `/site salon-logs #salon` : salon où le staff suit les candidatures (envoi, validation, modification demandée, refus, entretien) et les changements de rang du site.
-5. `/config`, puis **Profil du bot** et **Messages** : pseudo, avatar, activité, textes.
+5. `/accueil` : salon de bienvenue, rôle « Novice (Non WL) » à l'arrivée, règlement à publier.
+6. `/config`, puis **Profil du bot** et **Messages** : pseudo, avatar, activité, textes.
 
 ## /config : le panneau de configuration
 
@@ -41,6 +42,31 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 Tant qu'aucun accès n'est réglé, une commande suit sa permission Discord : c'est le plus simple, et la liste `/` est alors exactement fidèle. Réglez un accès quand vous voulez une règle plus fine, par exemple « `/embed` réservé à l'accès Staff ».
 
 Si un accès ouvre une commande à des membres **sans** sa permission Discord, ils ne la verront pas dans la liste `/`. Ils pourront quand même l'utiliser avec le préfixe (`+embed`).
+
+## /accueil : bienvenue, règlement et rôles
+
+- **Bienvenue et départ** : choisissez un salon pour chacun (vide pour désactiver) et modifiez les textes. Le message privé de bienvenue s'active d'un bouton. « Essai » montre le résultat avec votre profil.
+- **Rôles à l'arrivée** : jusqu'à 5 rôles donnés à chaque nouveau membre, par exemple « Novice (Non WL) ».
+- **Règlement** : écrivez le texte, choisissez le rôle donné en l'acceptant, puis publiez-le. Le message publié se met à jour tout seul quand vous changez le texte.
+- **Panneaux de rôles** : jusqu'à 10 panneaux de 25 rôles, en boutons ou en menu déroulant. « Un seul rôle à la fois » convient aux couleurs.
+- Le bot refuse les rôles placés au-dessus du sien et ceux qui donnent des permissions de gestion ou de modération. Les rôles de la whitelist (« attente de wl », « Magistrat (wl) ») sont donnés par le site : ne les mettez pas dans un panneau.
+
+## /serveur : la vie du serveur
+
+- **Statut FiveM** : indiquez l'adresse du serveur (IP:port) et le lien de connexion. Publiez le statut dans un salon : il se met à jour chaque minute. Tout le monde peut taper `/statut`.
+- **Compteurs** : un salon par compteur (membres, joueurs en jeu, citoyens whitelistés). Prenez un salon vocal verrouillé ; son nom affiche la valeur (`{n}`). Mise à jour toutes les 10 minutes, limite imposée par Discord.
+- **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou l'un des **textes autorisés** dans son statut personnalisé (lien du Discord, nom du serveur…), et retiré sinon. Les majuscules et les accents ne comptent pas. Tout se règle depuis Discord, dans `/serveur` ▸ Rôle soutien ou avec `/soutien` :
+  - `/soutien role @Soutien` : rôle donné (vide pour arrêter) ;
+  - `/soutien ajouter discord.gg/neahelike` et `/soutien retirer …` : jusqu'à 25 textes ;
+  - `/soutien tag actif:oui` : compter le tag du serveur ;
+  - `/soutien voir`, `/soutien verifier` : réglages actuels, vérification immédiate de tout le monde.
+- **Vocaux temporaires** : choisissez un salon créateur. En le rejoignant, un membre obtient son propre vocal dans la même catégorie, qu'il peut renommer et limiter ; le salon disparaît une fois vide.
+
+## /giveaway : les giveaways
+
+- `/giveaway creer duree:2j lot:… gagnants:2` publie le giveaway avec un bouton **Participer** (un second clic retire la participation). Options : salon, rôle exigé, description.
+- À la fin, le bot tire au sort parmi les participants encore sur le serveur (et porteurs du rôle exigé), met à jour le message et félicite les gagnants.
+- `terminer` tire au sort tout de suite, `relancer` refait un tirage en écartant les gagnants du dernier tirage, `annuler` clôt sans gagnant, `liste` montre ceux en cours. Le giveaway se désigne par l'identifiant ou le lien de son message.
 
 ## /logs : les logs du serveur
 
@@ -93,7 +119,7 @@ Le brouillon est gardé deux heures. Relancez `/embed` pour le retrouver.
 
 ## Le lien avec le site
 
-- Le rang du site (joueur, recruteur, staff) suit les rôles Discord en temps réel. `/site resync` force une vérification complète.
+- Le rang du site (joueur, recruteur, admin, owner) se règle sur le site. Le bot prévient le site dès que les rôles d'un membre changent ; chaque changement de rang arrive dans le salon de logs staff. `/site resync` revérifie qui est encore sur le serveur.
 - Les rôles du parcours (« attente de wl », « Magistrat (wl) ») sont donnés par le site.
 - Les joueurs suivent leur candidature avec `/candidature statut` : brouillon, envoyée, modification demandée (étapes et commentaire), entretien, refus (motifs et date de la prochaine candidature possible). La réponse n'est visible que d'eux. Les textes se modifient dans `/config` ▸ Messages.
 - `/fiche @joueur` affiche son compte, sa candidature, son personnage, ses documents et la décision, avec un bouton vers sa fiche sur l'espace staff du site. La réponse n'est visible que de vous. Les notes de l'équipe restent sur le site.

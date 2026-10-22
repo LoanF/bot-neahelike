@@ -15,8 +15,6 @@ describe.skipIf(!url)("candidatures et journal du site", async () => {
     DISCORD_BOT_TOKEN: "test",
     DISCORD_GUILD_ID: GUILD,
     SITE_URL: "https://example.test",
-    DISCORD_ROLE_STAFF: "800000000000000001",
-    DISCORD_ROLE_RECRUTEUR: "800000000000000002",
   });
 
   const { sql, closeDatabase } = await import("@/db");
