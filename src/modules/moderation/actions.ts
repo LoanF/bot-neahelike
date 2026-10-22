@@ -1,4 +1,4 @@
-import { RESTJSONErrorCodes, DiscordAPIError, type Guild, type GuildMember, type User } from "discord.js";
+import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild, type GuildMember, type User } from "discord.js";
 import { getSettings } from "@/config/store";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
@@ -7,15 +7,25 @@ import { logger } from "@/logger";
 import { sendLog } from "@/modules/logs/events";
 import { warningEvent } from "@/modules/logs/format";
 import { durationSuffix, hierarchyProblem, SANCTION_LABELS, type SanctionType } from "./logic";
-import { addSanction, dueTempBans, revokeActive, revokeSanction, type Sanction } from "./store";
+import { addSanction, dueTempBans, hasOtherActiveBan, revokeActive, revokeSanction, type Sanction } from "./store";
 
-/** Membre ciblé, s'il est encore sur le serveur. */
+/**
+ * Membre ciblé, s'il est encore sur le serveur. Seule une réponse « membre inconnu » vaut absence :
+ * une erreur passagère est remontée, sinon elle ferait sauter le contrôle de hiérarchie.
+ */
 export async function targetMember(guild: Guild, userId: string): Promise<GuildMember | null> {
-  return guild.members.cache.get(userId) ?? (await guild.members.fetch(userId).catch(() => null));
+  const cached = guild.members.cache.get(userId);
+  if (cached) return cached;
+  try {
+    return await guild.members.fetch(userId);
+  } catch (error) {
+    if (error instanceof DiscordAPIError && (error.code === RESTJSONErrorCodes.UnknownMember || error.code === RESTJSONErrorCodes.UnknownUser)) return null;
+    throw error;
+  }
 }
 
 /** Refuse une sanction contraire à la hiérarchie des rôles (voir `hierarchyProblem`). */
-export function checkHierarchy(actor: GuildMember, target: User, member: GuildMember | null) {
+export function checkHierarchy(actor: GuildMember, target: Pick<User, "id">, member: GuildMember | null) {
   const guild = actor.guild;
   const problem = hierarchyProblem({
     actorId: actor.id,
@@ -82,7 +92,16 @@ export async function sanction(type: SanctionType, input: SanctionInput): Promis
       break;
   }
 
-  const recorded = await addSanction({ guildId: guild.id, userId: input.target.id, moderatorId: input.actor.id, type, reason: input.reason, endsAt });
+  let recorded: Sanction;
+  try {
+    recorded = await addSanction({ guildId: guild.id, userId: input.target.id, moderatorId: input.actor.id, type, reason: input.reason, endsAt });
+  } catch (error) {
+    // Sans ligne au casier, un bannissement temporaire ne serait jamais levé : on annule l'action sur Discord.
+    if (type === "bannissement") await guild.bans.remove(input.target.id, "Casier indisponible : bannissement annulé").catch(() => {});
+    if (type === "exclusion") await member?.timeout(null, "Casier indisponible : exclusion annulée").catch(() => {});
+    logger.error({ err: error }, "Inscription au casier impossible");
+    throw new UserError("Le casier est indisponible : la sanction a été annulée sur Discord. Réessayez dans un instant.");
+  }
   // Les expulsions, bannissements et exclusions arrivent déjà dans les logs par le journal d'audit ; l'avertissement, lui, n'y passe pas.
   if (type === "avertissement") {
     await sendLog(guild, "avertissement", color => warningEvent(color, { number: recorded.number, userId: input.target.id, moderatorId: input.actor.id, reason: input.reason }));
@@ -113,8 +132,9 @@ export async function unban(guild: Guild, userId: string, byId: string, reason: 
   return { wasBanned, revoked };
 }
 
-/** Lève une exclusion temporaire en cours. */
+/** Lève une exclusion temporaire en cours ; mêmes règles de hiérarchie que pour la poser. */
 export async function endTimeout(actor: GuildMember, target: GuildMember, reason: string): Promise<number> {
+  checkHierarchy(actor, target, target);
   if (!target.isCommunicationDisabled()) throw new UserError("Ce membre n'est pas exclu en ce moment.");
   if (!target.moderatable) throw new UserError("Le bot ne peut pas modifier l'exclusion de ce membre.");
   await target.timeout(null, `${reason} (par ${actor.user.tag})`.slice(0, 512));
@@ -124,19 +144,22 @@ export async function endTimeout(actor: GuildMember, target: GuildMember, reason
 /**
  * Retire une sanction du casier. Une sanction encore en cours est levée sur Discord aussi
  * (débannissement, fin d'exclusion) ; un avertissement retiré est signalé dans les logs.
+ * Lever un bannissement demande la permission Bannir ; toucher un membre présent suit la hiérarchie des rôles.
  */
 export async function removeSanction(actor: GuildMember, sanctionRow: Sanction, reason: string): Promise<Sanction> {
   const guild = actor.guild;
   const running = !sanctionRow.revoked_at && (!sanctionRow.ends_at || new Date(sanctionRow.ends_at) > new Date());
+  if (sanctionRow.type === "bannissement" && !actor.permissions.has(PermissionFlagsBits.BanMembers)) {
+    throw new UserError("Retirer un bannissement demande la permission « Bannir des membres ».");
+  }
+  const member = await targetMember(guild, sanctionRow.user_id);
+  checkHierarchy(actor, { id: sanctionRow.user_id }, member);
   if (running && sanctionRow.type === "bannissement") {
     await guild.bans.remove(sanctionRow.user_id, reason).catch(error => {
       if (!(error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownBan)) throw error;
     });
   }
-  if (running && sanctionRow.type === "exclusion") {
-    const member = await targetMember(guild, sanctionRow.user_id);
-    if (member?.isCommunicationDisabled() && member.moderatable) await member.timeout(null, reason);
-  }
+  if (running && sanctionRow.type === "exclusion" && member?.isCommunicationDisabled() && member.moderatable) await member.timeout(null, reason);
   const revoked = await revokeSanction(sanctionRow.id, actor.id, reason);
   if (!revoked) throw new UserError(`La sanction #${sanctionRow.number} est déjà levée.`);
   if (revoked.type === "avertissement") {
@@ -145,13 +168,14 @@ export async function removeSanction(actor: GuildMember, sanctionRow: Sanction, 
   return revoked;
 }
 
-/** Lève les bannissements temporaires arrivés à échéance. */
+/** Lève les bannissements temporaires arrivés à échéance, sauf si un autre bannissement du membre est encore en vigueur. */
 export async function liftExpiredBans(guild: Guild) {
+  const botId = guild.client.user.id;
   for (const due of await dueTempBans(guild.id)) {
     try {
-      await unban(guild, due.user_id, guild.client.user.id, "Fin du bannissement temporaire");
+      if (!(await hasOtherActiveBan(guild.id, due.user_id, due.id))) await unban(guild, due.user_id, botId, "Fin du bannissement temporaire");
       // Le bannissement a pu être levé à la main entre-temps : la ligne est close dans tous les cas.
-      await revokeSanction(due.id, guild.client.user.id, "Fin du bannissement temporaire");
+      await revokeSanction(due.id, botId, "Fin du bannissement temporaire");
     } catch (error) {
       logger.error({ err: error, sanction: due.number }, "Levée d'un bannissement temporaire impossible");
     }

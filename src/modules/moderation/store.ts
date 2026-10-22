@@ -56,13 +56,29 @@ export async function revokeSanction(id: string, byId: string, reason: string): 
   return sanction;
 }
 
-/** Lève les sanctions encore en cours d'un type (débannissement, fin d'exclusion anticipée). */
+/**
+ * Lève les sanctions encore ouvertes d'un type (débannissement, fin d'exclusion anticipée).
+ * Pour un bannissement, même échu : sinon la levée automatique pourrait plus tard toucher un nouveau bannissement.
+ */
 export async function revokeActive(guildId: string, userId: string, type: "bannissement" | "exclusion", byId: string, reason: string): Promise<number> {
   const rows = await sql()`
     update bot_sanctions set revoked_at = now(), revoked_by_id = ${byId}, revoke_reason = ${reason}
-    where guild_id = ${guildId} and user_id = ${userId} and type = ${type} and revoked_at is null and (ends_at is null or ends_at > now())
+    where guild_id = ${guildId} and user_id = ${userId} and type = ${type} and revoked_at is null
+      and (${type === "bannissement"} or ends_at is null or ends_at > now())
   `;
   return rows.count;
+}
+
+/** Un autre bannissement du membre (définitif ou pas encore échu) est-il en vigueur ? */
+export async function hasOtherActiveBan(guildId: string, userId: string, exceptId: string): Promise<boolean> {
+  const [row] = await sql()<{ exists: boolean }[]>`
+    select exists (
+      select 1 from bot_sanctions
+      where guild_id = ${guildId} and user_id = ${userId} and type = 'bannissement' and revoked_at is null
+        and id <> ${exceptId} and (ends_at is null or ends_at > now())
+    ) as exists
+  `;
+  return row?.exists ?? false;
 }
 
 /** Bannissements temporaires arrivés à échéance et pas encore levés. */

@@ -35,4 +35,13 @@ describe("outils de salon", () => {
     store.prune(10 * 60_000 + 1);
     expect(store.size).toBe(0);
   });
+
+  it("refuse de recréer les salons réservés par Discord", async () => {
+    Object.assign(process.env, { DATABASE_URL: "postgresql://localhost/inutilise", DISCORD_BOT_TOKEN: "test", DISCORD_GUILD_ID: "100000000000000001", SITE_URL: "https://example.test" });
+    const { isProtectedChannel } = await import("@/modules/salons");
+    const guild = { rulesChannelId: "1", publicUpdatesChannelId: "2", safetyAlertsChannelId: null, systemChannelId: "3", widgetChannelId: null };
+    expect(isProtectedChannel(guild, "1")).toBe(true);
+    expect(isProtectedChannel(guild, "3")).toBe(true);
+    expect(isProtectedChannel(guild, "9")).toBe(false);
+  });
 });

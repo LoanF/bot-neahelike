@@ -54,7 +54,15 @@ function confirmation(ctx: CommandContext, item: Sanction, user: User, durationM
   return notice(ctx.settings, `${emoji} ${label}${durationSuffix(durationMs)} pour ${user} : sanction **#${item.number}**.\n**Raison :** ${item.reason}`, "Sanction appliquée");
 }
 
+/** En préfixe, « 1h 30m » donnerait 1h et une raison « 30m … » : la durée doit s'écrire sans espace. */
+export function checkSplitDuration(reason: string | undefined) {
+  if (reason && /^\d+\s*(sem|min|s|m|h|j|d|w)\b/i.test(reason.trim())) {
+    throw new UserError("Écrivez la durée d'un seul tenant, sans espace : par exemple `1h30` ou `1sem2j`.");
+  }
+}
+
 async function apply(ctx: CommandContext, type: SanctionType, user: User, durationMs?: number | null) {
+  if (durationMs && ctx.source === "prefixe") checkSplitDuration(ctx.string("raison"));
   await ctx.defer({ private: true });
   const reason = cleanReason(ctx.string("raison"));
   const item = await sanction(type, { actor: ctx.member, target: user, reason, durationMs });
@@ -96,6 +104,7 @@ const untimeout = defineCommand({
   options: [memberOption, reasonOption],
   async run(ctx) {
     const user = required(ctx);
+    await ctx.defer({ private: true });
     const member = await targetMember(ctx.guild, user.id);
     if (!member) throw new UserError("Ce membre n'est pas sur le serveur.");
     await endTimeout(ctx.member, member, cleanReason(ctx.string("raison")));

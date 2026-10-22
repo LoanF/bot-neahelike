@@ -9,6 +9,24 @@ describe("modération", async () => {
 
   const base = { actorId: "a", actorTop: 10, targetId: "t", targetTop: 5, ownerId: "o", botId: "b", botTop: 20 };
 
+  it("refuse en préfixe une durée coupée par un espace", async () => {
+    const { checkSplitDuration } = await import("@/modules/moderation");
+    expect(() => checkSplitDuration("30m spam")).toThrow("sans espace");
+    expect(() => checkSplitDuration("2j insultes")).toThrow("sans espace");
+    expect(() => checkSplitDuration("spam répété")).not.toThrow();
+    expect(() => checkSplitDuration(undefined)).not.toThrow();
+  });
+
+  it("ne prend pour absent qu'un membre que Discord déclare inconnu", async () => {
+    const { DiscordAPIError, RESTJSONErrorCodes } = await import("discord.js");
+    const { targetMember } = await import("@/modules/moderation/actions");
+    const guildFailing = (error: Error) => ({ members: { cache: new Map(), fetch: async () => { throw error; } } }) as never;
+    const apiError = (code: number) => new DiscordAPIError({ code, message: "x" }, code, 404, "GET", "/", {});
+    expect(await targetMember(guildFailing(apiError(RESTJSONErrorCodes.UnknownMember)), "1")).toBeNull();
+    await expect(targetMember(guildFailing(apiError(0)), "1")).rejects.toThrow();
+    await expect(targetMember(guildFailing(new Error("délai dépassé")), "1")).rejects.toThrow("délai");
+  });
+
   it("respecte la hiérarchie des rôles", () => {
     expect(hierarchyProblem(base)).toBeNull();
     expect(hierarchyProblem({ ...base, targetId: "a" })).toContain("vous-même");

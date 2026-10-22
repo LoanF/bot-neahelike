@@ -1,4 +1,5 @@
-import { ButtonStyle, ChannelType, Events, MessageFlags, PermissionFlagsBits, type Client, type GuildBasedChannel, type TextChannel } from "discord.js";
+import { ButtonStyle, ChannelType, Events, MessageFlags, PermissionFlagsBits, type ButtonInteraction, type Client, type Guild, type GuildBasedChannel, type NewsChannel, type TextChannel } from "discord.js";
+import type { GuildSettings } from "@/config/store";
 import { getSettings } from "@/config/store";
 import { isModuleEnabled } from "@/core/access";
 import { defineCommand, PERMISSION, type OptionDef } from "@/core/command";
@@ -14,6 +15,13 @@ import { logger } from "@/logger";
 import { deletable, MAX_CLEAR, MODULE, parseSlowmode, SnipeStore } from "./logic";
 
 const snipes = new SnipeStore();
+/** Salons en cours de recréation : un double clic ne crée pas deux copies. */
+const nuking = new Set<string>();
+
+/** Salons que Discord réserve (règles, mises à jour de la communauté, alertes, messages système, widget) : jamais recréés. */
+export function isProtectedChannel(guild: Pick<Guild, "rulesChannelId" | "publicUpdatesChannelId" | "safetyAlertsChannelId" | "systemChannelId" | "widgetChannelId">, channelId: string) {
+  return [guild.rulesChannelId, guild.publicUpdatesChannelId, guild.safetyAlertsChannelId, guild.systemChannelId, guild.widgetChannelId].includes(channelId);
+}
 const NUKE_PREFIX = "nuk";
 
 const channelOption: OptionDef = { name: "salon", description: "Salon (par défaut : celui-ci)", type: "channel" };
@@ -36,6 +44,11 @@ const audit = (ctx: CommandContext) => `${ctx.string("raison")?.trim() || "Sans 
 /** Verrouiller (écriture) ou cacher (lecture) un salon pour @everyone ; `null` rend la main aux permissions de la catégorie. */
 async function setEveryone(ctx: CommandContext, permission: "SendMessages" | "ViewChannel", allow: false | null, message: string) {
   const channel = textChannel(ctx);
+  await ctx.defer({ private: true });
+  // Cacher un salon à @everyone le cache aussi au bot s'il n'a pas d'autorisation propre : il la reçoit d'abord, pour pouvoir le rendre visible ensuite.
+  if (permission === "ViewChannel" && allow === false && ctx.guild.members.me) {
+    await channel.permissionOverwrites.edit(ctx.guild.members.me, { ViewChannel: true, ManageChannels: true, ManageRoles: true }, { reason: "Le bot garde l'accès au salon caché" });
+  }
   const overwrite = permission === "SendMessages" ? { SendMessages: allow, SendMessagesInThreads: allow, CreatePublicThreads: allow, AddReactions: allow } : { ViewChannel: allow };
   await channel.permissionOverwrites.edit(ctx.guild.roles.everyone, overwrite, { reason: audit(ctx) });
   if (permission === "SendMessages") await channel.send({ embeds: [notice(ctx.settings, message)] }).catch(() => {});
@@ -55,6 +68,10 @@ const clear = defineCommand({
   async run(ctx) {
     const channel = ctx.channel;
     if (!channel || !("bulkDelete" in channel)) throw new UserError("Cette commande s'utilise dans un salon textuel.");
+    const me = ctx.guild.members.me;
+    if (!me || !channel.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages])) {
+      throw new UserError("Le bot doit pouvoir lire l'historique et gérer les messages de ce salon.");
+    }
     await ctx.defer({ private: true });
     const count = ctx.integer("nombre", true);
     const author = ctx.userArg("membre");
@@ -85,7 +102,7 @@ const unlock = defineCommand({
   module: MODULE,
   defaultPermission: PERMISSION.salons,
   options: [channelOption, reasonOption],
-  run: ctx => setEveryone(ctx, "SendMessages", null, "🔓 Salon déverrouillé."),
+  run: ctx => setEveryone(ctx, "SendMessages", null, "🔓 Salon déverrouillé : l'écriture pour @everyone suit de nouveau la catégorie."),
 });
 
 const hide = defineCommand({
@@ -95,7 +112,7 @@ const hide = defineCommand({
   module: MODULE,
   defaultPermission: PERMISSION.salons,
   options: [channelOption, reasonOption],
-  run: ctx => setEveryone(ctx, "ViewChannel", false, "👁️ Salon caché à @everyone."),
+  run: ctx => setEveryone(ctx, "ViewChannel", false, "👁️ Salon caché à @everyone : seuls les rôles qui ont une autorisation propre à ce salon (et les administrateurs) le voient."),
 });
 
 const unhide = defineCommand({
@@ -118,6 +135,7 @@ const slowmode = defineCommand({
   async run(ctx) {
     const channel = textChannel(ctx);
     const seconds = parseSlowmode(ctx.string("duree", true));
+    await ctx.defer({ private: true });
     await channel.setRateLimitPerUser(seconds, `Mode lent (par ${ctx.user.tag})`);
     await ctx.reply({ embeds: [notice(ctx.settings, seconds ? `Mode lent de ${formatDuration(seconds * 1000)} dans ${channel}.` : `Mode lent retiré dans ${channel}.`)] }, { private: true });
   },
@@ -132,9 +150,12 @@ const nuke = defineCommand({
   options: [channelOption],
   async run(ctx) {
     const channel = textChannel(ctx);
+    if (isProtectedChannel(ctx.guild, channel.id)) throw new UserError(`${channel} est un salon réservé par Discord (règles, annonces de la communauté, messages système…) : il ne peut pas être recréé.`);
     await ctx.reply(
       {
-        content: `${ICON.attention} **Recréer ${channel} ?** Tous ses messages seront perdus définitivement ; ses réglages et permissions sont gardés.`,
+        content:
+          `${ICON.attention} **Recréer ${channel} ?** Tous ses messages seront perdus définitivement ; ses réglages et permissions sont gardés.\n` +
+          "Le nouveau salon aura un autre identifiant : s'il sert au bot (logs, bienvenue, statut, compteurs, tickets…), choisissez-le de nouveau dans le panneau concerné.",
         components: [
           row(
             button(customId(NUKE_PREFIX, ctx.user.id, "ok", channel.id), "Recréer le salon", { emoji: "💥", style: ButtonStyle.Danger }),
@@ -155,14 +176,31 @@ const nukeHandler: ComponentHandler = {
     if (action === "annuler") return interaction.update({ content: "Annulé.", components: [] });
     const channel = interaction.guild.channels.cache.get(args[0] ?? "");
     if (channel?.type !== ChannelType.GuildText && channel?.type !== ChannelType.GuildAnnouncement) throw new UserError("Ce salon n'existe plus.");
-    await interaction.update({ content: "💥 Recréation du salon…", components: [] });
-    const clone = await channel.clone({ position: channel.rawPosition, reason: `Nuke par ${interaction.user.tag}` });
-    await channel.delete(`Nuke par ${interaction.user.tag}`);
-    await clone.send({ embeds: [notice(settings, `💥 Salon recréé par <@${interaction.user.id}>.`)], allowedMentions: { parse: [] } });
-    // Le message éphémère vivait dans l'ancien salon : on répond à nouveau si c'est encore possible.
-    await interaction.followUp({ content: `${ICON.valider} Salon recréé : ${clone}.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (isProtectedChannel(interaction.guild, channel.id)) throw new UserError("Ce salon est réservé par Discord : il ne peut pas être recréé.");
+    if (nuking.has(channel.id)) return interaction.update({ content: "Recréation déjà en cours.", components: [] });
+    nuking.add(channel.id);
+    try {
+      await interaction.update({ content: "💥 Recréation du salon…", components: [] });
+      const clone = await channel.clone({ position: channel.rawPosition, reason: `Nuke par ${interaction.user.tag}` });
+      try {
+        await channel.delete(`Nuke par ${interaction.user.tag}`);
+      } catch (error) {
+        // Discord refuse : on retire la copie pour ne pas laisser deux salons.
+        await clone.delete("Recréation annulée").catch(() => {});
+        throw error;
+      }
+      await finishNuke(clone, interaction, settings);
+    } finally {
+      nuking.delete(channel.id);
+    }
   },
 };
+
+async function finishNuke(clone: TextChannel | NewsChannel, interaction: ButtonInteraction<"cached">, settings: GuildSettings) {
+  await clone.send({ embeds: [notice(settings, `💥 Salon recréé par <@${interaction.user.id}>.`)], allowedMentions: { parse: [] } });
+  // Le message éphémère vivait dans l'ancien salon : on répond à nouveau si c'est encore possible.
+  await interaction.followUp({ content: `${ICON.valider} Salon recréé : ${clone}.`, flags: MessageFlags.Ephemeral }).catch(() => {});
+}
 
 const snipe = defineCommand({
   name: "snipe",

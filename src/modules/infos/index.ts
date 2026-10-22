@@ -74,6 +74,7 @@ const userinfo = defineCommand({
   defaultPermission: PERMISSION.tous,
   options: [memberOption],
   async run(ctx) {
+    await ctx.defer();
     const { user, member } = await targetOf(ctx);
     await ctx.reply({ embeds: [userInfoEmbed(ctx.settings, user, member)] });
   },
@@ -98,6 +99,7 @@ const pic = defineCommand({
   defaultPermission: PERMISSION.tous,
   options: [memberOption],
   async run(ctx) {
+    await ctx.defer();
     const { user, member } = await targetOf(ctx);
     const global = user.displayAvatarURL({ size: 1024 });
     const server = member?.avatar ? member.displayAvatarURL({ size: 1024 }) : null;
@@ -114,6 +116,7 @@ const banner = defineCommand({
   defaultPermission: PERMISSION.tous,
   options: [memberOption],
   async run(ctx) {
+    await ctx.defer();
     const { user } = await targetOf(ctx);
     // La bannière n'est transmise qu'en relisant le profil complet.
     const full = await user.fetch(true);

@@ -24,7 +24,7 @@ describe.skipIf(!url)("casier de modération", async () => {
   const sanctions = await import("@/modules/moderation/store");
 
   /** Faux serveur Discord : garde la trace des appels, peut refuser une expulsion. */
-  function fakeGuild(options: { failKick?: boolean; targetTop?: number } = {}) {
+  function fakeGuild(options: { failKick?: boolean; targetTop?: number; canBan?: boolean } = {}) {
     const calls: string[] = [];
     const banned = new Set<string>();
     const target = {
@@ -62,7 +62,7 @@ describe.skipIf(!url)("casier de modération", async () => {
       },
       channels: { cache: new Map() },
     } as unknown as Guild;
-    const actor = { id: MOD, guild, user: { tag: "moderateur" }, roles: { highest: { position: 10 } } } as unknown as GuildMember;
+    const actor = { id: MOD, guild, user: { tag: "moderateur" }, roles: { highest: { position: 10 } }, permissions: { has: () => options.canBan ?? true } } as unknown as GuildMember;
     const user = { id: TARGET, tag: "cible", send: async () => calls.push("mp") } as unknown as User;
     return { guild, actor, user, calls, banned };
   }
@@ -147,5 +147,51 @@ describe.skipIf(!url)("casier de modération", async () => {
     expect(removed.revoked_by_id).toBe(MOD);
     expect((await sanctions.countSanctions(GUILD, TARGET)).avertissement).toBe(0);
     await expect(actions.removeSanction(actor, warning, "encore")).rejects.toThrow("déjà levée");
+  });
+
+  it("ne laisse lever un bannissement qu'avec la permission Bannir", async () => {
+    const admin = fakeGuild();
+    const ban = await actions.sanction("bannissement", { actor: admin.actor, target: admin.user, reason: "Triche" });
+    const moderator = fakeGuild({ canBan: false });
+    await expect(actions.removeSanction(moderator.actor, ban, "Je lève")).rejects.toThrow("Bannir des membres");
+    expect((await sanctions.sanctionByNumber(GUILD, ban.number))?.revoked_at).toBeNull();
+  });
+
+  it("protège un membre plus gradé contre le retrait d'une sanction ou la fin d'exclusion", async () => {
+    const { actor, user } = fakeGuild();
+    const timeout = await actions.sanction("exclusion", { actor, target: user, reason: "Flood", durationMs: 600_000 });
+    const lower = fakeGuild({ targetTop: 15 });
+    await expect(actions.removeSanction(lower.actor, timeout, "x")).rejects.toThrow("égal ou supérieur");
+    const target = lower.guild.members.cache.get(TARGET) as GuildMember;
+    await expect(actions.endTimeout(lower.actor, target, "x")).rejects.toThrow("égal ou supérieur");
+  });
+
+  it("un débannissement manuel clôt aussi un bannissement temporaire échu, pour ne pas toucher un nouveau bannissement", async () => {
+    const { guild, actor, user, banned } = fakeGuild();
+    const temp = await actions.sanction("bannissement", { actor, target: user, reason: "Temporaire", durationMs: 60_000 });
+    await sql()`update bot_sanctions set ends_at = now() - interval '1 second' where id = ${temp.id}`;
+    await actions.unban(guild, TARGET, MOD, "Débanni à la main");
+    expect((await sanctions.sanctionByNumber(GUILD, temp.number))?.revoked_at).not.toBeNull();
+
+    await actions.sanction("bannissement", { actor, target: user, reason: "Définitif" });
+    await actions.liftExpiredBans(guild);
+    expect(banned.has(TARGET)).toBe(true);
+  });
+
+  it("ne lève pas un bannissement temporaire échu quand un bannissement définitif est aussi ouvert", async () => {
+    const { guild, actor, user, banned } = fakeGuild();
+    const temp = await actions.sanction("bannissement", { actor, target: user, reason: "Temporaire", durationMs: 60_000 });
+    await sql()`insert into bot_sanctions (guild_id, user_id, moderator_id, type, reason) values (${GUILD}, ${TARGET}, ${MOD}, 'bannissement', 'Définitif')`;
+    await sql()`update bot_sanctions set ends_at = now() - interval '1 second' where id = ${temp.id}`;
+    await actions.liftExpiredBans(guild);
+    expect(banned.has(TARGET)).toBe(true);
+    expect((await sanctions.sanctionByNumber(GUILD, temp.number))?.revoked_at).not.toBeNull();
+  });
+
+  it("annule l'action sur Discord si le casier ne peut pas l'inscrire", async () => {
+    const { actor, user, banned, calls } = fakeGuild();
+    await expect(actions.sanction("bannissement", { actor, target: user, reason: null as never, durationMs: 60_000 })).rejects.toThrow("casier est indisponible");
+    expect(banned.has(TARGET)).toBe(false);
+    expect(calls).toContain(`unban:${TARGET}`);
   });
 });
