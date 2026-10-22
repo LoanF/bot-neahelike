@@ -10,7 +10,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
   | Commandes | Permission Discord |
   |---|---|
-  | `/config`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
+  | `/config`, `/accueil`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
   | `/embed`, `/fiche` | Gérer les messages |
   | `/aide`, `/ping`, `/candidature`, `/ticket` | Tout le monde |
 
@@ -23,7 +23,8 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 2. `/config`, puis **Modules** : coupez ce dont vous n'avez pas besoin.
 3. `/logs` : choisissez où partent les logs.
 4. `/site salon-logs #salon` : salon où le staff suit les candidatures (envoi, validation, modification demandée, refus, entretien) et les changements de rang du site.
-5. `/config`, puis **Profil du bot** et **Messages** : pseudo, avatar, activité, textes.
+5. `/accueil` : salon de bienvenue, rôle « Novice (Non WL) » à l'arrivée, règlement à publier.
+6. `/config`, puis **Profil du bot** et **Messages** : pseudo, avatar, activité, textes.
 
 ## /config : le panneau de configuration
 
@@ -41,6 +42,14 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 Tant qu'aucun accès n'est réglé, une commande suit sa permission Discord : c'est le plus simple, et la liste `/` est alors exactement fidèle. Réglez un accès quand vous voulez une règle plus fine, par exemple « `/embed` réservé à l'accès Staff ».
 
 Si un accès ouvre une commande à des membres **sans** sa permission Discord, ils ne la verront pas dans la liste `/`. Ils pourront quand même l'utiliser avec le préfixe (`+embed`).
+
+## /accueil : bienvenue, règlement et rôles
+
+- **Bienvenue et départ** : choisissez un salon pour chacun (vide pour désactiver) et modifiez les textes. Le message privé de bienvenue s'active d'un bouton. « Essai » montre le résultat avec votre profil.
+- **Rôles à l'arrivée** : jusqu'à 5 rôles donnés à chaque nouveau membre, par exemple « Novice (Non WL) ».
+- **Règlement** : écrivez le texte, choisissez le rôle donné en l'acceptant, puis publiez-le. Le message publié se met à jour tout seul quand vous changez le texte.
+- **Panneaux de rôles** : jusqu'à 10 panneaux de 25 rôles, en boutons ou en menu déroulant. « Un seul rôle à la fois » convient aux couleurs.
+- Le bot refuse les rôles placés au-dessus du sien et ceux qui donnent des permissions de gestion ou de modération. Les rôles de la whitelist (« attente de wl », « Magistrat (wl) ») sont donnés par le site : ne les mettez pas dans un panneau.
 
 ## /logs : les logs du serveur
 

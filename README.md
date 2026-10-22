@@ -50,6 +50,7 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 |---|---|---|
 | `/config` | Panneau : général, modules, accès, commandes, profil du bot, messages | Gérer le serveur |
 | `/logs` | Panneau : quel salon reçoit quel type de log | Gérer le serveur |
+| `/accueil` | Panneau : bienvenue et départ, rôles à l'arrivée, règlement à accepter, panneaux de rôles en libre-service | Gérer le serveur |
 | `/tickets` | Panneau : catégories, rôles, questions, archives, publication du panneau public | Gérer le serveur |
 | `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe ou auteur) | Tout le monde |
 | `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
