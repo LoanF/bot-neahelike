@@ -1,6 +1,6 @@
 import { sql } from "./index";
 
-/** Tables dont le bot a besoin. Chacune doit exister dans le schéma du site (voir docs/schema-site.md). */
+/** Tables dont le bot a besoin pour démarrer. Toutes sont créées par les migrations du site (voir le README, « Base de données »). */
 export const REQUIRED_TABLES = [
   "users",
   "events",
@@ -28,7 +28,7 @@ export async function checkDatabase() {
   const missing = await missingTables(REQUIRED_TABLES);
   if (missing.length > 0) {
     throw new Error(
-      `Tables absentes de la base : ${missing.join(", ")}. Ajoutez-les au schéma du site (docs/schema-site.md), puis lancez \`pnpm db:migrate\` dans le dépôt du site.`,
+      `Tables absentes de la base : ${missing.join(", ")}. Elles se créent avec les migrations du dépôt du site (\`pnpm db:migrate\`) : le bot ne modifie jamais la structure de la base.`,
     );
   }
 }

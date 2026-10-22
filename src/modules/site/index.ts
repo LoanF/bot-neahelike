@@ -8,7 +8,7 @@ export const siteModule: BotModule = {
   id: MODULE,
   label: "Lien avec le site",
   icon: "🏛️",
-  description: "Rangs du site synchronisés avec les rôles Discord, candidature, logs staff.",
+  description: "Présence des comptes du site, statut de candidature, fiche staff et décisions du site dans les logs staff.",
   commands: [candidature, fiche, site],
   setup: setupMemberSync,
   onReady: async guild => {

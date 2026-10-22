@@ -2,7 +2,7 @@ import { sql, type Enums, type Tables } from "@/db";
 
 export type GiveawayStatus = Enums<"giveaway_status">;
 
-/** Ligne de `bot_giveaways` (table du site, voir docs/schema-site.md, étape 4). */
+/** Ligne de `bot_giveaways` (table créée par les migrations du site). */
 export type Giveaway = Tables<"bot_giveaways">;
 
 export async function createGiveaway(input: {
