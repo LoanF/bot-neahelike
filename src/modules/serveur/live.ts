@@ -69,7 +69,7 @@ export async function updateStatusMessage(guild: Guild, settings: GuildSettings,
 
 /** Valeur de chaque compteur. */
 export function counterValues(guild: Guild): Record<CounterId, number> {
-  const citizenRole = env().DISCORD_ROLE_HELIKEEN;
+  const citizenRole = env().DISCORD_ROLE_WL;
   return {
     membres: guild.memberCount,
     joueurs: lastStatus?.online ? lastStatus.players : 0,

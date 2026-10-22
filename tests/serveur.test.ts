@@ -12,7 +12,7 @@ describe("vie du serveur", async () => {
     DISCORD_BOT_TOKEN: "test",
     DISCORD_GUILD_ID: "100000000000000001",
     SITE_URL: "https://example.test",
-    DISCORD_ROLE_HELIKEEN: "700000000000000002",
+    DISCORD_ROLE_WL: "700000000000000002",
   });
   const { modules } = await import("@/modules");
   setRegistry(new Registry(modules));

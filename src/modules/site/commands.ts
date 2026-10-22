@@ -91,7 +91,7 @@ export const site = defineCommand({
     { name: "resync", description: "Resynchronise la présence sur le serveur de tous les comptes du site" },
   ],
   async run(ctx) {
-    const { DISCORD_ROLE_ASPIRANT, DISCORD_ROLE_HELIKEEN, SITE_URL } = env();
+    const { DISCORD_ROLE_ATTENTE_WL, DISCORD_ROLE_WL, SITE_URL } = env();
     const roles = (ids: (string | undefined)[]) => ids.filter(Boolean).map(id => `<@&${id}>`).join(" ") || "*Non configuré*";
 
     switch (ctx.subcommand) {
@@ -109,7 +109,7 @@ export const site = defineCommand({
                   { name: "Salon de logs staff", value: channelId ? `<#${channelId}>` : "*Aucun*" },
                   { name: "Rang admin", value: roles(ranks.admin), inline: true },
                   { name: "Rang recruteur", value: roles(ranks.recruteur), inline: true },
-                  { name: "Parcours", value: `Attente du vocal : ${roles([DISCORD_ROLE_ASPIRANT])}\nWhitelisté : ${roles([DISCORD_ROLE_HELIKEEN])}` },
+                  { name: "Parcours", value: `Attente du vocal : ${roles([DISCORD_ROLE_ATTENTE_WL])}\nWhitelisté : ${roles([DISCORD_ROLE_WL])}` },
                 ),
             ],
           },

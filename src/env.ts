@@ -9,9 +9,9 @@ const schema = z.object({
   /** Adresse publique du site (liens vers le portail). */
   SITE_URL: z.string().url().transform(url => url.replace(/\/+$/, "")),
   /** « attente de wl » : candidature validée, en attente de l'entretien vocal. */
-  DISCORD_ROLE_ASPIRANT: snowflake.optional(),
+  DISCORD_ROLE_ATTENTE_WL: snowflake.optional(),
   /** « Magistrat (wl) » : whitelisté. */
-  DISCORD_ROLE_HELIKEEN: snowflake.optional(),
+  DISCORD_ROLE_WL: snowflake.optional(),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
 });
 

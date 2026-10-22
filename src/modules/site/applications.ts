@@ -38,8 +38,8 @@ const STATUS_KEYS: Record<Application["status"], string> = {
 export function statusKey(account: Account | undefined, application: Application | undefined, roles: Iterable<string>, now = new Date()): string {
   if (!account) return "candidature.statut.sans-compte";
   if (!account.cgu_accepted_at) return "candidature.statut.cgu";
-  const { DISCORD_ROLE_ASPIRANT, DISCORD_ROLE_HELIKEEN } = env();
-  const journey = journeyFromRoles(roles, { aspirant: DISCORD_ROLE_ASPIRANT, helikeen: DISCORD_ROLE_HELIKEEN });
+  const { DISCORD_ROLE_ATTENTE_WL, DISCORD_ROLE_WL } = env();
+  const journey = journeyFromRoles(roles, { aspirant: DISCORD_ROLE_ATTENTE_WL, helikeen: DISCORD_ROLE_WL });
   if (journey === "whiteliste") return "candidature.statut.whiteliste";
   if (application) {
     if (application.status === "refusee") {
