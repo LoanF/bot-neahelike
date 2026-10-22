@@ -10,9 +10,9 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
   | Commandes | Permission Discord |
   |---|---|
-  | `/config`, `/accueil`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
+  | `/config`, `/accueil`, `/serveur`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
   | `/embed`, `/fiche` | Gérer les messages |
-  | `/aide`, `/ping`, `/candidature`, `/ticket` | Tout le monde |
+  | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut` | Tout le monde |
 
 - Les **administrateurs Discord** peuvent toujours tout utiliser.
 - Les panneaux et les réponses privées ne sont visibles que de la personne qui a lancé la commande. Avec le préfixe, le panneau s'affiche dans le salon, mais seul son auteur peut cliquer dessus.
@@ -50,6 +50,13 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 - **Règlement** : écrivez le texte, choisissez le rôle donné en l'acceptant, puis publiez-le. Le message publié se met à jour tout seul quand vous changez le texte.
 - **Panneaux de rôles** : jusqu'à 10 panneaux de 25 rôles, en boutons ou en menu déroulant. « Un seul rôle à la fois » convient aux couleurs.
 - Le bot refuse les rôles placés au-dessus du sien et ceux qui donnent des permissions de gestion ou de modération. Les rôles de la whitelist (« attente de wl », « Magistrat (wl) ») sont donnés par le site : ne les mettez pas dans un panneau.
+
+## /serveur : la vie du serveur
+
+- **Statut FiveM** : indiquez l'adresse du serveur (IP:port) et le lien de connexion. Publiez le statut dans un salon : il se met à jour chaque minute. Tout le monde peut taper `/statut`.
+- **Compteurs** : un salon par compteur (membres, joueurs en jeu, citoyens whitelistés). Prenez un salon vocal verrouillé ; son nom affiche la valeur (`{n}`). Mise à jour toutes les 10 minutes, limite imposée par Discord.
+- **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou un texte choisi dans son statut personnalisé (par exemple le lien d'invitation), et retiré sinon.
+- **Vocaux temporaires** : choisissez un salon créateur. En le rejoignant, un membre obtient son propre vocal dans la même catégorie, qu'il peut renommer et limiter ; le salon disparaît une fois vide.
 
 ## /logs : les logs du serveur
 
