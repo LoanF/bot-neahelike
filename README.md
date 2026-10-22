@@ -273,7 +273,7 @@ Toutes les commandes existent en `/` **et** avec le préfixe (`+` par défaut, r
 |---|---|---|
 | `/tickets` 🔒 | Panneau : catégories, rôles, questions, transcriptions, fermeture automatique, publication | Gérer le serveur |
 | `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe de la catégorie, ou auteur pour fermer) | Tout le monde |
-| `/giveaway creer/terminer/relancer/annuler/liste` | Giveaways avec bouton Participer, rôle exigé, tirage automatique | Gérer le serveur |
+| `/giveaway` (alias `gw`) | Panneau des giveaways : création (salon, rôle, durée, lot, gagnants, aperçu), suivi, tirage immédiat, nouveau tirage, annulation | Gérer le serveur |
 | `/embed` (alias `annonce`) | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
 
 ### Modération
@@ -443,13 +443,18 @@ Les messages des salons de logs eux-mêmes ne sont jamais journalisés. Le conte
 
 ### Giveaways (`/giveaway`)
 
-- `creer` : durée (1 minute à 30 jours), lot, nombre de gagnants (1 à 20), salon, rôle exigé, description.
-  - Le message porte un bouton **Participer** ; un second clic retire la participation.
-  - Le compteur de participants est mis à jour par lots.
-- **Tirage automatique** dans les 15 secondes qui suivent la fin :
-  - au hasard (aléatoire cryptographique), parmi les participants **encore sur le serveur** et porteurs du rôle exigé ;
-  - le message est mis à jour et les gagnants sont félicités.
-- `terminer` (tirage immédiat), `relancer` (nouveau tirage en écartant les gagnants du dernier tirage), `annuler`, `liste`. Un giveaway se désigne par l'ID ou le lien de son message.
+Tout se fait depuis le panneau ouvert par `/giveaway` :
+
+- **Accueil** : les giveaways en cours, puis ceux terminés ou annulés depuis moins de 7 jours ; un menu pour en gérer un ; le bouton « Nouveau giveaway ».
+- **Création** :
+  - sélecteur du salon de publication et du rôle exigé (facultatif) ;
+  - menu de durées (10 minutes à 30 jours), ou durée libre dans le formulaire ;
+  - formulaire pour le lot, le nombre de gagnants (1 à 20) et la description ;
+  - aperçu en direct du message tel qu'il sera publié ; « Publier » s'active quand le lot et le salon sont choisis ;
+  - le brouillon est gardé une heure en mémoire, propre à chaque membre.
+- **Participation** : le message publié porte un bouton **Participer** ; un second clic retire la participation. Le compteur de participants est mis à jour par lots.
+- **Tirage automatique** dans les 15 secondes qui suivent la fin, au hasard (aléatoire cryptographique), parmi les participants **encore sur le serveur** et porteurs du rôle exigé. Le message est mis à jour et les gagnants sont félicités.
+- **Gestion d'un giveaway** : tirer maintenant, nouveau tirage une fois terminé (les gagnants du dernier tirage sont écartés), annuler (avec confirmation), lien vers le message.
 
 ### Créateur d'embeds (`/embed`)
 

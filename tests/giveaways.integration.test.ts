@@ -84,9 +84,8 @@ describe.skipIf(!url)("giveaways en base", async () => {
     expect((await store.setWinners(finished.id, ["u2"]))?.winner_ids).toEqual(["u2"]);
   });
 
-  it("retrouve un giveaway par son message et ne retire qu'un giveaway jamais publié", async () => {
+  it("ne retire qu'un giveaway jamais publié", async () => {
     const published = await create();
-    expect((await store.giveawayByMessage(GUILD, published.message_id!))?.id).toBe(published.id);
     const unpublished = await create(60_000, false);
     await store.dropGiveaway(unpublished.id);
     expect(await store.giveawayById(unpublished.id)).toBeUndefined();
@@ -99,5 +98,51 @@ describe.skipIf(!url)("giveaways en base", async () => {
     await store.toggleEntry(giveaway.id, "u1");
     await clean();
     expect(await sql()`select 1 from bot_giveaway_entries where giveaway_id = ${giveaway.id}`).toHaveLength(0);
+  });
+
+  describe("publication depuis le panneau", async () => {
+    const { publishGiveaway } = await import("@/modules/giveaways/actions");
+    const { newDraft } = await import("@/modules/giveaways/logic");
+    const settings = { config: { embed_color: "#d1a64a", embed_color_dark: "#1a150f", embed_color_light: "#f1ece2" } } as never;
+
+    function fakeGuild(fail = false) {
+      const sent: unknown[] = [];
+      const channel = {
+        id: "600000000000000001",
+        isSendable: () => true,
+        permissionsFor: () => ({ has: () => true }),
+        send: async (payload: unknown) => {
+          if (fail) throw new Error("Missing Access");
+          sent.push(payload);
+          return { id: `61${String(Date.now()).padStart(16, "0")}`, delete: async () => {} };
+        },
+        toString: () => "<#600000000000000001>",
+      };
+      return { guild: { id: GUILD, channels: { cache: new Map([[channel.id, channel]]) }, members: { me: {} } } as never, sent };
+    }
+
+    it("publie le brouillon : ligne en base et message avec le bouton Participer", async () => {
+      const { guild, sent } = fakeGuild();
+      const published = await publishGiveaway(guild, settings, { ...newDraft("600000000000000001"), prize: "Lot du panneau", winners: 3 }, "300000000000000001");
+      expect(sent).toHaveLength(1);
+      const saved = await store.giveawayById(published.id);
+      expect(saved).toMatchObject({ prize: "Lot du panneau", winner_count: 3, status: "en_cours", message_id: published.message_id });
+    });
+
+    it("refuse un brouillon incomplet et ne laisse rien si l'envoi échoue", async () => {
+      await expect(publishGiveaway(fakeGuild().guild, settings, newDraft("600000000000000001"), "1")).rejects.toThrow("Il manque le lot");
+      await expect(publishGiveaway(fakeGuild(true).guild, settings, { ...newDraft("600000000000000001"), prize: "Lot" }, "1")).rejects.toThrow("Publication impossible");
+      expect(await sql()`select 1 from bot_giveaways where guild_id = ${GUILD}`).toHaveLength(0);
+    });
+
+    it("liste d'abord les giveaways en cours, puis les clos de moins de 7 jours", async () => {
+      const running = await create();
+      const recent = await create(-1000);
+      await store.finishGiveaway(recent.id, []);
+      const old = await create(-1000);
+      await store.cancelGiveaway(old.id);
+      await sql()`update bot_giveaways set ended_at = now() - interval '8 days' where id = ${old.id}`;
+      expect((await store.recentGiveaways(GUILD)).map(item => item.id)).toEqual([running.id, recent.id]);
+    });
   });
 });
