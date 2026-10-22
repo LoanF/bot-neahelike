@@ -1,4 +1,4 @@
-import { ButtonStyle, MessageFlags, type Guild, type GuildMember, type PartialGuildMember } from "discord.js";
+import { ButtonStyle, MessageFlags, type Guild, type GuildMember } from "discord.js";
 import { getSettings, type GuildSettings } from "@/config/store";
 import { isModuleEnabled } from "@/core/access";
 import { ANYONE, customId, type ComponentHandler } from "@/core/components";
@@ -156,8 +156,6 @@ export async function sendTo(guild: Guild, channelId: string | undefined, payloa
   }
   await channel.send({ ...payload, allowedMentions: { users: notify ? [notify] : [] } });
 }
-
-export type AnyMember = GuildMember | PartialGuildMember;
 
 export const welcomeHandler: ComponentHandler = {
   prefix: PREFIX,

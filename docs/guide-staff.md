@@ -10,9 +10,13 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
   | Commandes | Permission Discord |
   |---|---|
-  | `/config`, `/accueil`, `/serveur`, `/soutien`, `/giveaway`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
-  | `/embed`, `/fiche` | Gérer les messages |
-  | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut` | Tout le monde |
+  | `/config`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message`, `/site`, `/accueil`, `/serveur`, `/soutien`, `/tickets`, `/logs`, `/giveaway`, `/nuke` | Gérer le serveur |
+  | `/warn`, `/timeout`, `/untimeout`, `/casier` | Exclure temporairement des membres |
+  | `/kick` | Expulser des membres |
+  | `/ban`, `/tempban`, `/unban` | Bannir des membres |
+  | `/lock`, `/unlock`, `/hide`, `/unhide`, `/slowmode` | Gérer les salons |
+  | `/embed`, `/fiche`, `/clear`, `/snipe` | Gérer les messages |
+  | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut`, `/userinfo`, `/serverinfo`, `/pic`, `/banner` | Tout le monde |
 
 - Les **administrateurs Discord** peuvent toujours tout utiliser.
 - Les panneaux et les réponses privées ne sont visibles que de la personne qui a lancé la commande. Avec le préfixe, le panneau s'affiche dans le salon, mais seul son auteur peut cliquer dessus.
@@ -77,14 +81,14 @@ Chaque commande n'apparaît que pour les membres qui ont la permission Discord c
 ## /logs : les logs du serveur
 
 - Choisissez un **type de log** dans le premier menu, puis son salon. Le bouton « Envoyer un essai » vérifie que tout fonctionne.
-- Le second menu règle une **catégorie entière** d'un coup (Messages, Membres, Modération, Vocal, Serveur), ou **tout**.
+- Le second menu règle une **catégorie entière** d'un coup (Messages, Membres, Modération, Vocal, Serveur, Tickets), ou **tout**.
 - Plusieurs types peuvent partager un salon ; un type sans salon est désactivé.
 
 | Catégorie | Types |
 |---|---|
 | Messages | Messages supprimés, modifiés, suppressions en masse (avec la copie des messages en fichier) |
 | Membres | Arrivées, départs, pseudos, rôles des membres, boosts |
-| Modération | Bannissements, expulsions, exclusions temporaires (avec l'auteur et la raison) |
+| Modération | Bannissements, expulsions, exclusions temporaires (avec l'auteur et la raison), avertissements donnés avec le bot |
 | Vocal | Entrées, sorties et changements de salon vocal |
 | Serveur | Salons, rôles, invitations, fils de discussion |
 
