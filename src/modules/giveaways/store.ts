@@ -37,12 +37,6 @@ export async function giveawayById(id: string): Promise<Giveaway | undefined> {
   return giveaway;
 }
 
-/** Giveaway désigné par l'identifiant de son message (copié depuis Discord). */
-export async function giveawayByMessage(guildId: string, messageId: string): Promise<Giveaway | undefined> {
-  const [giveaway] = await sql()<Giveaway[]>`select * from bot_giveaways where guild_id = ${guildId} and message_id = ${messageId}`;
-  return giveaway;
-}
-
 export async function countEntries(id: string): Promise<number> {
   const [row] = await sql()<{ count: number }[]>`select count(*)::int as count from bot_giveaway_entries where giveaway_id = ${id}`;
   return row?.count ?? 0;
@@ -75,12 +69,6 @@ export async function dueGiveaways(guildId: string): Promise<Giveaway[]> {
   `;
 }
 
-export async function activeGiveaways(guildId: string): Promise<Giveaway[]> {
-  return sql()<Giveaway[]>`
-    select * from bot_giveaways where guild_id = ${guildId} and status = 'en_cours' and message_id is not null order by ends_at limit 25
-  `;
-}
-
 /** Clôt le giveaway avec ses gagnants ; une seule fois, même si deux tirages se croisent. */
 export async function finishGiveaway(id: string, winnerIds: string[]): Promise<Giveaway | undefined> {
   const [giveaway] = await sql()<Giveaway[]>`
@@ -99,4 +87,15 @@ export async function setWinners(id: string, winnerIds: string[]): Promise<Givea
 export async function cancelGiveaway(id: string): Promise<Giveaway | undefined> {
   const [giveaway] = await sql()<Giveaway[]>`update bot_giveaways set status = 'annule', ended_at = now() where id = ${id} and status = 'en_cours' returning *`;
   return giveaway;
+}
+
+/** Giveaways du panneau : en cours, puis terminés ou annulés depuis moins de 7 jours. */
+export async function recentGiveaways(guildId: string): Promise<Giveaway[]> {
+  return sql()<Giveaway[]>`
+    select * from bot_giveaways
+    where guild_id = ${guildId} and message_id is not null
+      and (status = 'en_cours' or ended_at > now() - interval '7 days')
+    order by (status = 'en_cours') desc, coalesce(ended_at, ends_at) desc
+    limit 25
+  `;
 }
