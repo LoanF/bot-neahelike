@@ -6,6 +6,7 @@ import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { renderMessage } from "@/core/messages";
+import { fetchPublished } from "@/core/published";
 import { button, field, ICON, modal, row } from "@/core/panels";
 import { logger } from "@/logger";
 import { addMembers, categoryOf, claim, close, createTicket, isTicketStaff, PREFIX, reopen, ticketNumber } from "./actions";
@@ -38,9 +39,10 @@ export async function refreshPublicPanel(guild: Guild) {
   const settings = await getSettings(guild.id);
   const tickets = ticketSettings(settings);
   if (!tickets.panel) return;
-  const channel = guild.channels.cache.get(tickets.panel.channelId);
-  const message = channel?.isTextBased() ? await channel.messages.fetch(tickets.panel.messageId).catch(() => null) : null;
-  if (!message) {
+  const message = await fetchPublished(guild, tickets.panel);
+  // Erreur passagère : on garde la référence et on réessaiera au prochain changement.
+  if (!message) return;
+  if (message === "supprime") {
     await saveTicketSettings(settings, { ...tickets, panel: undefined });
     return;
   }

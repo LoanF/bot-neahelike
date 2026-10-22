@@ -81,6 +81,8 @@ function setup(client: Client) {
 }
 
 async function onReady(guild: Guild) {
+  // Tous les membres en cache : compteur des citoyens et rôle soutien justes dès le démarrage.
+  await guild.members.fetch().catch(error => logger.warn({ err: error }, "Chargement des membres impossible"));
   const settings = await getSettings(guild.id);
   await cleanTemporaries(guild, settings).catch(error => logger.warn({ err: error }, "Nettoyage des vocaux temporaires impossible"));
 

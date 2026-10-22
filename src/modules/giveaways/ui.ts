@@ -6,6 +6,7 @@ import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { button, ICON, row } from "@/core/panels";
+import { fetchPublished } from "@/core/published";
 import { logger } from "@/logger";
 import { MODULE, pickWinners } from "./logic";
 import { countEntries, entriesOf, finishGiveaway, giveawayById, toggleEntry, type Giveaway } from "./store";
@@ -44,8 +45,8 @@ export function giveawayPayload(settings: GuildSettings, giveaway: Giveaway, ent
 
 async function fetchGiveawayMessage(guild: Guild, giveaway: Giveaway) {
   if (!giveaway.message_id) return null;
-  const channel = guild.channels.cache.get(giveaway.channel_id);
-  return channel?.isTextBased() ? channel.messages.fetch(giveaway.message_id).catch(() => null) : null;
+  const message = await fetchPublished(guild, { channelId: giveaway.channel_id, messageId: giveaway.message_id });
+  return message === "supprime" ? null : message;
 }
 
 /** Redessine le message du giveaway depuis la base. */
@@ -80,12 +81,28 @@ export function eligible(guild: Pick<Guild, "members">, giveaway: Pick<Giveaway,
   });
 }
 
-/** Tire les gagnants, clôt le giveaway, met à jour le message et annonce le résultat. */
-export async function drawGiveaway(guild: Guild, giveaway: Giveaway) {
-  const winners = pickWinners(eligible(guild, giveaway, await entriesOf(giveaway.id)), giveaway.winner_count);
+/** Charge les participants absents du cache, pour ne pas écarter un membre simplement hors ligne. */
+export async function loadMembers(guild: Guild, userIds: string[]) {
+  const missing = userIds.filter(userId => !guild.members.cache.has(userId));
+  for (let index = 0; index < missing.length; index += 100) {
+    await guild.members.fetch({ user: missing.slice(index, index + 100) }).catch(error => logger.warn({ err: error }, "Chargement des participants impossible"));
+  }
+}
+
+/** Participants éligibles d'un giveaway, membres chargés au besoin. */
+export async function eligibleEntries(guild: Guild, giveaway: Giveaway): Promise<string[]> {
+  const entries = await entriesOf(giveaway.id);
+  await loadMembers(guild, entries);
+  return eligible(guild, giveaway, entries);
+}
+
+/** Tire les gagnants, clôt le giveaway, met à jour le message et annonce le résultat. `false` : déjà clos. */
+export async function drawGiveaway(guild: Guild, giveaway: Giveaway): Promise<boolean> {
+  const winners = pickWinners(await eligibleEntries(guild, giveaway), giveaway.winner_count);
   const finished = await finishGiveaway(giveaway.id, winners);
-  if (!finished) return;
+  if (!finished) return false;
   await announce(guild, finished, winners);
+  return true;
 }
 
 export async function announce(guild: Guild, giveaway: Giveaway, winners: string[], reroll = false) {

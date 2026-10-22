@@ -318,7 +318,8 @@ export const serverPanel: ComponentHandler = {
         await interaction.deferUpdate();
         const next = { ...server, compteurs };
         await saveServerSettings(settings, next);
-        await updateCounters(interaction.guild, next);
+        // Sans attendre : Discord peut faire patienter un renommage plusieurs minutes.
+        void updateCounters(interaction.guild, next).catch(() => {});
         return show(interaction, "compteurs", channelId ? `${COUNTERS[counter].label} affiché dans <#${channelId}>.` : `${COUNTERS[counter].label} : compteur arrêté.`);
       }
       case "compteurs-noms":

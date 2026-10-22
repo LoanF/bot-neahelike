@@ -276,7 +276,15 @@ function checkPublishable(guild: Guild, target: GuildBasedChannel | undefined) {
   return target;
 }
 
+/** Accuse réception tout de suite : mettre à jour les messages publiés peut dépasser les 3 secondes de Discord. */
+async function deferPanel(interaction: PanelInteraction) {
+  if (interaction.deferred || interaction.replied) return;
+  if (interaction.isModalSubmit() && !interaction.isFromMessage()) return;
+  await interaction.deferUpdate();
+}
+
 async function commit(interaction: PanelInteraction, settings: GuildSettings, next: WelcomeSettings, target: string, notice: string) {
+  await deferPanel(interaction);
   await saveWelcomeSettings(settings, next);
   await refreshPublished(interaction.guild);
   return show(interaction, target, notice);
@@ -333,6 +341,7 @@ export const welcomePanel: ComponentHandler = {
       case "texte-ok": {
         if (!TEXTS[arg]) throw new Error(`Texte inconnu : ${arg}`);
         const text = field(submitted(interaction), "texte");
+        await deferPanel(interaction);
         if (text) await setMessage(interaction.guildId, arg, text);
         else await resetMessage(interaction.guildId, arg);
         await refreshPublished(interaction.guild);
@@ -403,6 +412,7 @@ export const welcomePanel: ComponentHandler = {
       case "publier": {
         if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
         const target = checkPublishable(interaction.guild, interaction.guild.channels.cache.get(interaction.values[0] ?? ""));
+        await deferPanel(interaction);
         const isRules = arg === "reglement";
         const previousRef = isRules ? welcome.reglementMessage : findPanel(welcome, arg).message;
         const payload = isRules ? rulesPayload(settings, interaction.guild) : rolePanelPayload(settings, findPanel(welcome, arg), roleNameIn(interaction.guild));

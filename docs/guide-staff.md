@@ -62,7 +62,7 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 
 - `/giveaway creer duree:2j lot:… gagnants:2` publie le giveaway avec un bouton **Participer** (un second clic retire la participation). Options : salon, rôle exigé, description.
 - À la fin, le bot tire au sort parmi les participants encore sur le serveur (et porteurs du rôle exigé), met à jour le message et félicite les gagnants.
-- `terminer` tire au sort tout de suite, `relancer` refait un tirage en écartant les anciens gagnants, `annuler` clôt sans gagnant, `liste` montre ceux en cours. Le giveaway se désigne par l'identifiant ou le lien de son message.
+- `terminer` tire au sort tout de suite, `relancer` refait un tirage en écartant les gagnants du dernier tirage, `annuler` clôt sans gagnant, `liste` montre ceux en cours. Le giveaway se désigne par l'identifiant ou le lien de son message.
 
 ## /logs : les logs du serveur
 

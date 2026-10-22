@@ -8,8 +8,8 @@ import { UserError } from "@/core/errors";
 import type { BotModule } from "@/core/registry";
 import { logger } from "@/logger";
 import { MAX_WINNERS, MODULE, parseDuration, pickWinners } from "./logic";
-import { activeGiveaways, cancelGiveaway, createGiveaway, dropGiveaway, dueGiveaways, entriesOf, giveawayByMessage, setGiveawayMessage, setWinners } from "./store";
-import { announce, drawGiveaway, eligible, giveawayHandler, giveawayPayload, refreshGiveaway } from "./ui";
+import { activeGiveaways, cancelGiveaway, createGiveaway, dropGiveaway, dueGiveaways, giveawayByMessage, setGiveawayMessage, setWinners } from "./store";
+import { announce, drawGiveaway, eligibleEntries, giveawayHandler, giveawayPayload, refreshGiveaway } from "./ui";
 
 /** Les giveaways échus sont tirés au sort dans les 15 secondes. */
 const DRAW_EVERY_MS = 15 * 1000;
@@ -68,10 +68,13 @@ const giveaway = defineCommand({
           hostId: ctx.user.id,
           endsAt: new Date(Date.now() + duration),
         });
+        let sent: Awaited<ReturnType<typeof target.send>> | undefined;
         try {
-          const message = await target.send(giveawayPayload(ctx.settings, created, 0));
-          await setGiveawayMessage(created.id, message.id);
+          sent = await target.send(giveawayPayload(ctx.settings, created, 0));
+          await setGiveawayMessage(created.id, sent.id);
         } catch (error) {
+          // Pas de message orphelin : un bouton sans giveaway en base ne mènerait nulle part.
+          await sent?.delete().catch(() => {});
           await dropGiveaway(created.id);
           throw new UserError(`Le bot ne peut pas publier dans ${target} : vérifiez ses permissions (${error instanceof Error ? error.message : "erreur inconnue"}).`);
         }
@@ -82,7 +85,7 @@ const giveaway = defineCommand({
         const current = await byMessage(ctx);
         if (current.status !== "en_cours") throw new UserError("Ce giveaway est déjà clos.");
         await ctx.defer({ private: true });
-        await drawGiveaway(ctx.guild, current);
+        if (!(await drawGiveaway(ctx.guild, current))) throw new UserError("Ce giveaway vient d'être clos par le tirage automatique.");
         await ctx.reply({ embeds: [notice(ctx.settings, `Tirage effectué pour **${current.prize}**.`)] }, { private: true });
         return;
       }
@@ -90,7 +93,8 @@ const giveaway = defineCommand({
         const current = await byMessage(ctx);
         if (current.status !== "termine") throw new UserError("Seul un giveaway terminé peut être relancé.");
         await ctx.defer({ private: true });
-        const winners = pickWinners(eligible(ctx.guild, current, await entriesOf(current.id)), ctx.integer("gagnants") ?? current.winner_count, current.winner_ids);
+        // Les gagnants du dernier tirage sont écartés ; un tirage plus ancien n'est pas gardé en mémoire.
+        const winners = pickWinners(await eligibleEntries(ctx.guild, current), ctx.integer("gagnants") ?? current.winner_count, current.winner_ids);
         if (winners.length === 0) throw new UserError("Plus aucun participant éligible pour un nouveau tirage.");
         const updated = await setWinners(current.id, winners);
         if (updated) await announce(ctx.guild, updated, winners, true);

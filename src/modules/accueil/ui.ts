@@ -6,6 +6,7 @@ import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { renderMessage } from "@/core/messages";
+import { fetchPublished } from "@/core/published";
 import { button, choice, ICON, row } from "@/core/panels";
 import { baseVars } from "@/core/templates";
 import { logger } from "@/logger";
@@ -83,11 +84,6 @@ export function roleNameIn(guild: Guild) {
   return (id: string) => guild.roles.cache.get(id)?.name ?? "Rôle supprimé";
 }
 
-async function fetchMessage(guild: Guild, ref: { channelId: string; messageId: string }) {
-  const channel = guild.channels.cache.get(ref.channelId);
-  return channel?.isTextBased() ? channel.messages.fetch(ref.messageId).catch(() => null) : null;
-}
-
 /** Met à jour les messages publiés (règlement, panneaux de rôles) ; oublie ceux qui ont été supprimés. */
 export async function refreshPublished(guild: Guild) {
   const settings = await getSettings(guild.id);
@@ -95,18 +91,18 @@ export async function refreshPublished(guild: Guild) {
   let changed = false;
 
   if (welcome.reglementMessage) {
-    const message = await fetchMessage(guild, welcome.reglementMessage);
-    if (message) await message.edit(rulesPayload(settings, guild)).catch(error => logger.warn({ err: error }, "Mise à jour du règlement impossible"));
-    else {
+    const message = await fetchPublished(guild, welcome.reglementMessage);
+    if (message && message !== "supprime") await message.edit(rulesPayload(settings, guild)).catch(error => logger.warn({ err: error }, "Mise à jour du règlement impossible"));
+    else if (message === "supprime") {
       welcome.reglementMessage = undefined;
       changed = true;
     }
   }
   for (const panel of welcome.panneaux) {
     if (!panel.message) continue;
-    const message = await fetchMessage(guild, panel.message);
-    if (message) await message.edit(rolePanelPayload(settings, panel, roleNameIn(guild))).catch(error => logger.warn({ err: error }, "Mise à jour d'un panneau de rôles impossible"));
-    else {
+    const message = await fetchPublished(guild, panel.message);
+    if (message && message !== "supprime") await message.edit(rolePanelPayload(settings, panel, roleNameIn(guild))).catch(error => logger.warn({ err: error }, "Mise à jour d'un panneau de rôles impossible"));
+    else if (message === "supprime") {
       panel.message = undefined;
       changed = true;
     }

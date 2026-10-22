@@ -4,7 +4,9 @@ import { isModuleEnabled } from "@/core/access";
 import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
 import { row } from "@/core/panels";
+import { fetchPublished } from "@/core/published";
 import { env } from "@/env";
+import { roleProblem } from "@/modules/accueil/settings";
 import { logger } from "@/logger";
 import { COUNTERS, counterName, MODULE, parseAddress, parseDynamic, saveServerSettings, serverSettings, supports, voiceName, type CounterId, type FivemStatus, type ServerSettings } from "./settings";
 
@@ -21,7 +23,8 @@ export function lastFivemStatus() {
 export async function fetchFivem(address: string): Promise<FivemStatus> {
   const { host, port } = parseAddress(address);
   try {
-    const response = await fetch(`http://${host}:${port}/dynamic.json`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    // Pas de redirection suivie : le bot n'interroge que l'adresse réglée.
+    const response = await fetch(`http://${host}:${port}/dynamic.json`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), redirect: "error" });
     if (!response.ok) return { online: false, players: 0, max: 0 };
     return parseDynamic(await response.json());
   } catch {
@@ -52,16 +55,12 @@ export function statusPayload(settings: GuildSettings, server: ServerSettings, s
   return { embeds: [result], components };
 }
 
-async function fetchMessage(guild: Guild, ref: { channelId: string; messageId: string }) {
-  const channel = guild.channels.cache.get(ref.channelId);
-  return channel?.isTextBased() ? channel.messages.fetch(ref.messageId).catch(() => null) : null;
-}
-
-/** Met à jour le message de statut publié ; l'oublie s'il a été supprimé. */
+/** Met à jour le message de statut publié ; l'oublie seulement si Discord confirme qu'il a été supprimé. */
 export async function updateStatusMessage(guild: Guild, settings: GuildSettings, server: ServerSettings) {
   if (!server.statutMessage) return;
-  const message = await fetchMessage(guild, server.statutMessage);
-  if (!message) {
+  const message = await fetchPublished(guild, server.statutMessage);
+  if (!message) return;
+  if (message === "supprime") {
     await saveServerSettings(settings, { ...server, statutMessage: undefined });
     return;
   }
@@ -79,7 +78,20 @@ export function counterValues(guild: Guild): Record<CounterId, number> {
 }
 
 /** Renomme les salons compteurs dont la valeur a changé (Discord limite à 2 renommages par salon et par 10 minutes). */
+let countersRunning = false;
+
 export async function updateCounters(guild: Guild, server: ServerSettings) {
+  // Un renommage peut attendre jusqu'à 10 minutes la limite de Discord : jamais deux passages à la fois.
+  if (countersRunning) return;
+  countersRunning = true;
+  try {
+    await renameCounters(guild, server);
+  } finally {
+    countersRunning = false;
+  }
+}
+
+async function renameCounters(guild: Guild, server: ServerSettings) {
   const values = counterValues(guild);
   for (const id of Object.keys(COUNTERS) as CounterId[]) {
     const counter = server.compteurs?.[id];
@@ -104,8 +116,16 @@ export async function reconcileSupport(member: GuildMember, server: ServerSettin
   const wanted = supports(server, { guildId: member.guild.id, primaryGuild: member.user.primaryGuild, customStatus: customStatus(presence) });
   const has = member.roles.cache.has(roleId);
   if (wanted === has) return;
-  // Statut inconnu (membre hors ligne) : on ne retire pas un rôle obtenu par le texte du statut.
-  if (!wanted && !presence && server.soutienTexte) return;
+  // Hors ligne, Discord ne transmet plus le statut : on ne retire pas un rôle obtenu par le texte du statut.
+  const statusUnknown = !presence || presence.status === "offline";
+  if (!wanted && statusUnknown && server.soutienTexte) return;
+  // Le rôle a pu gagner des permissions depuis son réglage : revérifié avant chaque attribution.
+  const role = member.guild.roles.cache.get(roleId);
+  const problem = role ? roleProblem(role, member.guild.id, member.guild.members.me?.roles.highest.position ?? 0) : "rôle supprimé";
+  if (wanted && problem) {
+    logger.warn({ role: roleId, raison: problem }, "Rôle soutien non distribuable");
+    return;
+  }
   await (wanted ? member.roles.add(roleId, "Soutien : tag ou statut du serveur") : member.roles.remove(roleId, "Soutien : tag ou statut retiré")).catch(error =>
     logger.warn({ err: error, user: member.id }, "Rôle soutien impossible à mettre à jour"),
   );
@@ -118,18 +138,35 @@ export async function reconcileAllSupport(guild: Guild, server: ServerSettings) 
 
 // ─── Vocaux temporaires ─────────────────────────────────────────────────────
 
-/** Crée le salon d'un membre qui rejoint le salon créateur et l'y déplace ; supprime les salons temporaires vidés. */
-export async function handleVoice(before: VoiceState, after: VoiceState) {
+/** Ajoute ou retire un salon de la liste des vocaux temporaires, sur les réglages les plus récents. */
+async function updateTemporaries(guildId: string, change: (list: string[]) => string[]) {
+  const settings = await getSettings(guildId);
+  const server = serverSettings(settings);
+  await saveServerSettings(settings, { ...server, vocalTemporaires: change(server.vocalTemporaires ?? []).slice(-200) }, { temporaries: true });
+}
+
+let voiceQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Crée le salon d'un membre qui rejoint le salon créateur et l'y déplace ; supprime les salons temporaires vidés.
+ * Les événements vocaux sont traités un par un : deux arrivées simultanées ne perdent aucun salon de la liste.
+ */
+export function handleVoice(before: VoiceState, after: VoiceState): Promise<void> {
+  const run = voiceQueue.then(() => handleVoiceNow(before, after));
+  voiceQueue = run.catch(() => {});
+  return run;
+}
+
+async function handleVoiceNow(before: VoiceState, after: VoiceState) {
   const guild = after.guild;
   const settings = await getSettings(guild.id);
   if (!isModuleEnabled(settings, MODULE)) return;
   const server = serverSettings(settings);
-  const temporaries = new Set(server.vocalTemporaires ?? []);
 
-  if (before.channelId && before.channelId !== after.channelId && temporaries.has(before.channelId) && before.channel?.members.size === 0) {
+  if (before.channelId && before.channelId !== after.channelId && (server.vocalTemporaires ?? []).includes(before.channelId) && before.channel?.members.size === 0) {
+    const channelId = before.channelId;
     await before.channel.delete("Salon vocal temporaire vide").catch(error => logger.warn({ err: error }, "Suppression du vocal temporaire impossible"));
-    temporaries.delete(before.channelId);
-    await saveServerSettings(settings, { ...server, vocalTemporaires: [...temporaries] });
+    await updateTemporaries(guild.id, list => list.filter(id => id !== channelId));
   }
 
   const member = after.member;
@@ -147,11 +184,11 @@ export async function handleVoice(before: VoiceState, after: VoiceState) {
     ],
     reason: `Vocal temporaire de ${member.user.tag}`,
   });
-  const fresh = serverSettings(await getSettings(guild.id));
-  await saveServerSettings(settings, { ...fresh, vocalTemporaires: [...(fresh.vocalTemporaires ?? []), channel.id].slice(-200) });
+  await updateTemporaries(guild.id, list => [...list, channel.id]);
   await member.voice.setChannel(channel).catch(async () => {
     // Le membre est parti entre-temps : le salon ne sert à rien.
     await channel.delete("Membre parti avant le déplacement").catch(() => {});
+    await updateTemporaries(guild.id, list => list.filter(id => id !== channel.id));
   });
 }
 
@@ -165,5 +202,5 @@ export async function cleanTemporaries(guild: Guild, settings: GuildSettings) {
     if (channel.members.size === 0) await channel.delete("Salon vocal temporaire vide").catch(() => kept.push(channelId));
     else kept.push(channelId);
   }
-  if (kept.length !== (server.vocalTemporaires ?? []).length) await saveServerSettings(settings, { ...server, vocalTemporaires: kept });
+  if (kept.length !== (server.vocalTemporaires ?? []).length) await saveServerSettings(settings, { ...server, vocalTemporaires: kept }, { temporaries: true });
 }

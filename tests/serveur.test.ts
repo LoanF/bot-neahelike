@@ -110,6 +110,56 @@ describe("vie du serveur", async () => {
     expect(supports({ soutienTexte: "discord.gg/neahelike" }, { guildId: guild.id })).toBe(false);
   });
 
+  describe("attribution du rôle soutien", async () => {
+    const { reconcileSupport } = await import("@/modules/serveur/live");
+    const ROLE = "500000000000000001";
+
+    function member(held: boolean, rolePermissions = 0n) {
+      const calls: string[] = [];
+      const roles = new Map(held ? [[ROLE, {}]] : []);
+      const fake = {
+        id: "300000000000000001",
+        user: { bot: false, primaryGuild: null },
+        presence: null,
+        guild: {
+          id: guild.id,
+          members: { me: { roles: { highest: { position: 10 } } } },
+          roles: { cache: new Map([[ROLE, { id: ROLE, name: "Soutien", managed: false, position: 2, permissions: { bitfield: rolePermissions } }]]) },
+        },
+        roles: {
+          cache: roles,
+          add: async () => calls.push("ajout"),
+          remove: async () => calls.push("retrait"),
+        },
+      };
+      return { fake: fake as never, calls };
+    }
+    const status = (text: string | null, online = "online") => ({ status: online, activities: text === null ? [] : [{ type: 4, state: text }] }) as never;
+    const server = { soutienRoleId: ROLE, soutienTexte: "discord.gg/neahelike" };
+
+    it("donne le rôle quand le statut contient le texte, et le retire quand il disparaît", async () => {
+      const newcomer = member(false);
+      await reconcileSupport(newcomer.fake, server, status("Viens sur discord.gg/NeaHelike"));
+      expect(newcomer.calls).toEqual(["ajout"]);
+      const former = member(true);
+      await reconcileSupport(former.fake, server, status("Autre chose"));
+      expect(former.calls).toEqual(["retrait"]);
+    });
+
+    it("ne retire pas le rôle quand le membre se déconnecte (statut inconnu)", async () => {
+      const offline = member(true);
+      await reconcileSupport(offline.fake, server, status(null, "offline"));
+      await reconcileSupport(offline.fake, server, null);
+      expect(offline.calls).toEqual([]);
+    });
+
+    it("refuse de donner un rôle devenu porteur de permissions de modération", async () => {
+      const risky = member(false, 8n);
+      await reconcileSupport(risky.fake, server, status("discord.gg/neahelike"));
+      expect(risky.calls).toEqual([]);
+    });
+  });
+
   it("n'accepte qu'un lien de connexion https", () => {
     expect(parseJoinLink("cfx.re/join/abc123")).toBe("https://cfx.re/join/abc123");
     expect(parseJoinLink(null)).toBeUndefined();

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { setModuleSettings, type GuildSettings } from "@/config/store";
+import { getSettings, setModuleSettings, type GuildSettings } from "@/config/store";
 import { UserError } from "@/core/errors";
 import { renderTemplate } from "@/core/templates";
 
@@ -48,8 +48,13 @@ export function serverSettings(settings: GuildSettings): ServerSettings {
   return parsed.success ? parsed.data : {};
 }
 
-export async function saveServerSettings(settings: GuildSettings, next: ServerSettings) {
-  await setModuleSettings(settings.guildId, MODULE, schema.parse(next));
+/**
+ * Enregistre les réglages. La liste des vocaux temporaires, tenue par les événements vocaux, est relue juste avant
+ * l'écriture pour qu'un réglage du panneau n'efface pas un salon créé entre-temps ; `temporaries` l'écrit telle quelle.
+ */
+export async function saveServerSettings(settings: GuildSettings, next: ServerSettings, { temporaries = false } = {}) {
+  const vocalTemporaires = temporaries ? next.vocalTemporaires : serverSettings(await getSettings(settings.guildId)).vocalTemporaires;
+  await setModuleSettings(settings.guildId, MODULE, schema.parse({ ...next, vocalTemporaires }));
 }
 
 /** Adresse FiveM saisie : hôte (IP ou nom) et port, 30120 par défaut. */
