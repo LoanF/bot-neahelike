@@ -77,6 +77,8 @@ Commandes utiles :
 | `pnpm test` | Tests (voir [Tests](#tests)) |
 | `pnpm db:types` | Régénère les types de la base depuis Supabase (après une migration du site) |
 
+> **Windows** : au lancement dans un terminal, le bot passe la console en UTF-8 (`chcp 65001`) pour que les accents des logs s'affichent bien. Si un terminal les affiche encore mal (`Pr├®sence`), lancez `chcp 65001` avant `pnpm dev`.
+
 > **Un seul bot à la fois.** Le site et le bot utilisent le même token. Ne lancez jamais le bot à deux endroits en même temps (par exemple en local **et** sur l'hébergement) : les deux instances répondraient aux mêmes commandes et se disputeraient les tâches planifiées. Pour développer sans toucher au vrai serveur, utilisez une application Discord de test et une base de test.
 
 ---

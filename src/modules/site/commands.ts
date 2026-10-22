@@ -126,7 +126,7 @@ export const site = defineCommand({
       }
       case "resync": {
         await ctx.defer({ private: true });
-        const result = await resync(ctx.guild);
+        const result = await resync(ctx.guild, { refresh: true });
         await ctx.reply(
           {
             embeds: [

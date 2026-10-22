@@ -6,7 +6,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
  * Lancés seulement si TEST_DATABASE_URL est défini : jamais la base de production.
  */
 const url = process.env.TEST_DATABASE_URL;
-const GUILD = "100000000000000001";
+const GUILD = "100000000000000555";
 const USER = "900000000000000011";
 
 describe.skipIf(!url)("candidatures et journal du site", async () => {
