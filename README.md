@@ -53,6 +53,7 @@ Le guide complet du staff est dans [`docs/guide-staff.md`](docs/guide-staff.md).
 | `/accueil` | Panneau : bienvenue et départ, rôles à l'arrivée, règlement à accepter, panneaux de rôles en libre-service | Gérer le serveur |
 | `/serveur` | Panneau : statut FiveM, salons compteurs, rôle soutien, vocaux temporaires | Gérer le serveur |
 | `/statut` | État du serveur FiveM (en ligne, joueurs) | Tout le monde |
+| `/giveaway creer/terminer/relancer/annuler/liste` | Giveaways avec bouton Participer, rôle exigé, tirage automatique (tables `bot_giveaways`, `bot_giveaway_entries`) | Gérer le serveur |
 | `/tickets` | Panneau : catégories, rôles, questions, archives, publication du panneau public | Gérer le serveur |
 | `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe ou auteur) | Tout le monde |
 | `/embed` | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |

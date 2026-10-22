@@ -10,7 +10,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
   | Commandes | Permission Discord |
   |---|---|
-  | `/config`, `/accueil`, `/serveur`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
+  | `/config`, `/accueil`, `/serveur`, `/giveaway`, `/logs`, `/tickets`, `/site`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message` | Gérer le serveur |
   | `/embed`, `/fiche` | Gérer les messages |
   | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut` | Tout le monde |
 
@@ -57,6 +57,12 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 - **Compteurs** : un salon par compteur (membres, joueurs en jeu, citoyens whitelistés). Prenez un salon vocal verrouillé ; son nom affiche la valeur (`{n}`). Mise à jour toutes les 10 minutes, limite imposée par Discord.
 - **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou un texte choisi dans son statut personnalisé (par exemple le lien d'invitation), et retiré sinon.
 - **Vocaux temporaires** : choisissez un salon créateur. En le rejoignant, un membre obtient son propre vocal dans la même catégorie, qu'il peut renommer et limiter ; le salon disparaît une fois vide.
+
+## /giveaway : les giveaways
+
+- `/giveaway creer duree:2j lot:… gagnants:2` publie le giveaway avec un bouton **Participer** (un second clic retire la participation). Options : salon, rôle exigé, description.
+- À la fin, le bot tire au sort parmi les participants encore sur le serveur (et porteurs du rôle exigé), met à jour le message et félicite les gagnants.
+- `terminer` tire au sort tout de suite, `relancer` refait un tirage en écartant les anciens gagnants, `annuler` clôt sans gagnant, `liste` montre ceux en cours. Le giveaway se désigne par l'identifiant ou le lien de son message.
 
 ## /logs : les logs du serveur
 

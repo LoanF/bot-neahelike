@@ -53,6 +53,7 @@ Discord (passerelle + REST) ──► src/index.ts ──► modules (commandes,
 | `site` | Présence des comptes du site, `/candidature`, `/fiche`, `/site`, relais du journal du site (candidatures, rangs) vers les logs staff |
 | `accueil` | Panneau `/accueil`, bienvenue et départ, autorôle, règlement à accepter, panneaux de rôles (boutons ou menu) |
 | `serveur` | Panneau `/serveur`, `/statut`, statut FiveM (dynamic.json), salons compteurs, rôle soutien (tag ou statut), vocaux temporaires |
+| `giveaways` | `/giveaway`, bouton Participer, tirage automatique toutes les 15 s (tables `bot_giveaways`, `bot_giveaway_entries`) |
 | `tickets` | Panneau `/tickets`, panneau public, salons de tickets, transcription HTML, note en MP, fermeture automatique (table `bot_tickets`) |
 | `logs` | Panneau `/logs`, écoute des messages, membres, vocal et du journal d'audit |
 | `embeds` | Créateur d'embeds `/embed` (brouillons gardés en mémoire) |

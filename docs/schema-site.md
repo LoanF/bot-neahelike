@@ -179,3 +179,65 @@ Migration RLS (`pnpm drizzle-kit generate --custom --name activer_rls_tickets`) 
 ```sql
 ALTER TABLE "bot_tickets" ENABLE ROW LEVEL SECURITY;
 ```
+
+---
+
+## Étape 4 — Giveaways
+
+Deux tables : le giveaway lui-même et ses participants (une ligne par participant, pour qu'un clic ne réécrive jamais toute la liste).
+
+Imports à compléter si besoin : `check`, `index`, `integer`, `pgEnum`, `primaryKey`, `uuid` (déjà présents pour les tickets).
+
+Code à ajouter à la fin de `src/db/schema.ts` :
+
+```ts
+export const giveawayStatus = pgEnum("giveaway_status", ["en_cours", "termine", "annule"]);
+
+/** Giveaways du bot : publiés dans un salon, tirés au sort à leur fin. */
+export const botGiveaways = pgTable(
+  "bot_giveaways",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    guildId: text().notNull(),
+    channelId: text().notNull(),
+    /** Message publié ; null le temps de l'envoyer. */
+    messageId: text().unique(),
+    prize: text().notNull(),
+    description: text(),
+    winnerCount: integer().notNull().default(1),
+    /** Rôle exigé pour participer ; null : tout le monde. */
+    requiredRoleId: text(),
+    hostId: text().notNull(),
+    status: giveawayStatus().notNull().default("en_cours"),
+    /** Gagnants tirés à la fin (ou au nouveau tirage). */
+    winnerIds: text().array().notNull().default(sql`'{}'::text[]`),
+    endsAt: timestamp({ withTimezone: true }).notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp({ withTimezone: true }),
+  },
+  table => [
+    index("bot_giveaways_a_terminer_idx").on(table.status, table.endsAt),
+    check("bot_giveaways_gagnants", sql`${table.winnerCount} between 1 and 20`),
+  ],
+);
+
+/** Participants d'un giveaway. */
+export const botGiveawayEntries = pgTable(
+  "bot_giveaway_entries",
+  {
+    giveawayId: uuid()
+      .notNull()
+      .references(() => botGiveaways.id, { onDelete: "cascade" }),
+    userId: text().notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [primaryKey({ columns: [table.giveawayId, table.userId] })],
+);
+```
+
+Migration RLS (`pnpm drizzle-kit generate --custom --name activer_rls_giveaways`) :
+
+```sql
+ALTER TABLE "bot_giveaways" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "bot_giveaway_entries" ENABLE ROW LEVEL SECURITY;
+```
