@@ -93,7 +93,7 @@ Le brouillon est gardé deux heures. Relancez `/embed` pour le retrouver.
 
 ## Le lien avec le site
 
-- Le rang du site (joueur, recruteur, staff) suit les rôles Discord en temps réel. `/site resync` force une vérification complète.
+- Le rang du site (joueur, recruteur, admin, owner) se règle sur le site. Le bot prévient le site dès que les rôles d'un membre changent ; chaque changement de rang arrive dans le salon de logs staff. `/site resync` revérifie qui est encore sur le serveur.
 - Les rôles du parcours (« attente de wl », « Magistrat (wl) ») sont donnés par le site.
 - Les joueurs suivent leur candidature avec `/candidature statut` : brouillon, envoyée, modification demandée (étapes et commentaire), entretien, refus (motifs et date de la prochaine candidature possible). La réponse n'est visible que d'eux. Les textes se modifient dans `/config` ▸ Messages.
 - `/fiche @joueur` affiche son compte, sa candidature, son personnage, ses documents et la décision, avec un bouton vers sa fiche sur l'espace staff du site. La réponse n'est visible que de vous. Les notes de l'équipe restent sur le site.

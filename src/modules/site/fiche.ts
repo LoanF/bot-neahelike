@@ -8,13 +8,19 @@ import { AFFINITY_LABELS, CREATURE_LABELS, CRITERION_LABELS, DOSSIER_KIND_LABELS
 
 export type Profile = Pick<Tables<"users">, "id" | "username" | "global_name" | "rank" | "cgu_accepted_at" | "in_guild" | "created_at">;
 
-const RANK_LABELS: Record<string, string> = { joueur: "Joueur", recruteur: "Recruteur", staff: "Staff" };
+export const RANK_LABELS: Record<string, string> = { joueur: "Joueur", recruteur: "Recruteur", admin: "Admin", owner: "Owner" };
 
 export async function findProfile(userId: string): Promise<Profile | undefined> {
   const [profile] = await sql()<Profile[]>`
     select id, username, global_name, rank, cgu_accepted_at, in_guild, created_at from users where id = ${userId}
   `;
   return profile;
+}
+
+/** Rôles Discord réglés sur le site pour chaque rang (lecture seule ; vide tant que le site utilise ses variables de secours). */
+export async function roleRanks(): Promise<{ admin: string[]; recruteur: string[] }> {
+  const rows = await sql()<Pick<Tables<"role_ranks">, "role_id" | "rank">[]>`select role_id, rank from role_ranks`;
+  return { admin: rows.filter(row => row.rank === "admin").map(row => row.role_id), recruteur: rows.filter(row => row.rank === "recruteur").map(row => row.role_id) };
 }
 
 /** Fiche du joueur sur l'espace staff du site. */

@@ -9,8 +9,6 @@ describe("candidatures : fiche et journal", async () => {
     DISCORD_BOT_TOKEN: "test",
     DISCORD_GUILD_ID: "100000000000000001",
     SITE_URL: "https://example.test",
-    DISCORD_ROLE_STAFF: "800000000000000001",
-    DISCORD_ROLE_RECRUTEUR: "800000000000000002",
   });
   const { ficheEmbed, profileUrl } = await import("@/modules/site/fiche");
   const { describeEvent, RELAYED_EVENTS } = await import("@/modules/site/journal");
@@ -93,6 +91,12 @@ describe("candidatures : fiche et journal", async () => {
     expect(describeEvent(event("candidature.envoyee", {}, "900000000000000001"))?.text).toBe("<@900000000000000001> a envoyé sa candidature.");
     expect(describeEvent(event("candidature.envoyee", { renvoi: true }, "900000000000000001"))?.title).toContain("renvoyée");
     expect(describeEvent(event("candidature.validee"))?.text).toContain("<@900000000000000002> a validé");
+  });
+
+  it("relaie les changements de rang calculés par le site, avec les nouveaux rangs", () => {
+    const change = describeEvent(event("rang.change", { avant: "recruteur", apres: "owner" }, "900000000000000001"));
+    expect(change?.text).toBe("<@900000000000000001> : Recruteur → **Owner**");
+    expect(describeEvent(event("rang.change", { avant: "joueur", apres: "admin" }))?.text).toContain("→ **Admin**");
   });
 
   it("reprend les étapes, critères et commentaires avec les libellés du site", () => {

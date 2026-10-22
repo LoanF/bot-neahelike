@@ -50,7 +50,7 @@ Discord (passerelle + REST) ──► src/index.ts ──► modules (commandes,
 |---|---|
 | `general` | `/aide`, `/ping`, messages système |
 | `config` | Panneau `/config` et commandes de réglage |
-| `site` | Synchronisation des rangs du site, `/candidature`, `/fiche`, `/site`, relais du journal des candidatures vers les logs staff |
+| `site` | Présence des comptes du site, `/candidature`, `/fiche`, `/site`, relais du journal du site (candidatures, rangs) vers les logs staff |
 | `tickets` | Panneau `/tickets`, panneau public, salons de tickets, transcription HTML, note en MP, fermeture automatique (table `bot_tickets`) |
 | `logs` | Panneau `/logs`, écoute des messages, membres, vocal et du journal d'audit |
 | `embeds` | Créateur d'embeds `/embed` (brouillons gardés en mémoire) |

@@ -326,6 +326,39 @@ export type Database = {
         }
         Relationships: []
       }
+      businesses: {
+        Row: {
+          archived: boolean
+          created_at: string
+          description: string
+          id: string
+          name: string
+          open: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          description?: string
+          id: string
+          name: string
+          open?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          open?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           actor_id: string | null
@@ -368,6 +401,83 @@ export type Database = {
           },
         ]
       }
+      factions: {
+        Row: {
+          archived: boolean
+          created_at: string
+          id: string
+          join_open: boolean
+          kind: Database["public"]["Enums"]["faction_kind"]
+          lead_open: boolean
+          lore: Json | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          id: string
+          join_open?: boolean
+          kind: Database["public"]["Enums"]["faction_kind"]
+          lead_open?: boolean
+          lore?: Json | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          join_open?: boolean
+          kind?: Database["public"]["Enums"]["faction_kind"]
+          lead_open?: boolean
+          lore?: Json | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          href: string | null
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_users_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_views: {
         Row: {
           last_seen_at: string
@@ -400,6 +510,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limits: {
+        Row: {
+          count: number
+          key: string
+          reset_at: string
+        }
+        Insert: {
+          count: number
+          key: string
+          reset_at: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          reset_at?: string
+        }
+        Relationships: []
+      }
+      reapply_locks: {
+        Row: {
+          discord_id: string
+          until: string
+        }
+        Insert: {
+          discord_id: string
+          until: string
+        }
+        Update: {
+          discord_id?: string
+          until?: string
+        }
+        Relationships: []
+      }
+      refusal_criteria: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      role_ranks: {
+        Row: {
+          rank: Database["public"]["Enums"]["rank"]
+          role_id: string
+          updated_at: string
+          updated_by_id: string | null
+        }
+        Insert: {
+          rank: Database["public"]["Enums"]["rank"]
+          role_id: string
+          updated_at?: string
+          updated_by_id?: string | null
+        }
+        Update: {
+          rank?: Database["public"]["Enums"]["rank"]
+          role_id?: string
+          updated_at?: string
+          updated_by_id?: string | null
+        }
+        Relationships: []
+      }
+      site_owners: {
+        Row: {
+          added_by_id: string | null
+          created_at: string
+          discord_id: string
+        }
+        Insert: {
+          added_by_id?: string | null
+          created_at?: string
+          discord_id: string
+        }
+        Update: {
+          added_by_id?: string | null
+          created_at?: string
+          discord_id?: string
+        }
+        Relationships: []
       }
       staff_notes: {
         Row: {
@@ -506,8 +712,9 @@ export type Database = {
         | "entretien"
         | "whitelistee"
         | "refusee"
-      note_visibility: "equipe" | "staff"
-      rank: "joueur" | "recruteur" | "staff"
+      faction_kind: "affinite" | "creature"
+      note_visibility: "equipe" | "admin"
+      rank: "joueur" | "recruteur" | "admin" | "owner"
       ticket_status: "ouvert" | "ferme"
     }
     CompositeTypes: {
@@ -644,8 +851,9 @@ export const Constants = {
         "whitelistee",
         "refusee",
       ],
-      note_visibility: ["equipe", "staff"],
-      rank: ["joueur", "recruteur", "staff"],
+      faction_kind: ["affinite", "creature"],
+      note_visibility: ["equipe", "admin"],
+      rank: ["joueur", "recruteur", "admin", "owner"],
       ticket_status: ["ouvert", "ferme"],
     },
   },

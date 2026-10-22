@@ -7,7 +7,7 @@ import { row } from "@/core/panels";
 import { sql } from "@/db";
 import { env } from "@/env";
 import { latestApplication, statusKey, statusVars, type Account } from "./applications";
-import { ficheEmbed, findProfile, profileUrl } from "./fiche";
+import { ficheEmbed, findProfile, profileUrl, roleRanks } from "./fiche";
 import { resync } from "./events";
 import { MODULE, siteSettings, updateSiteSettings } from "./settings";
 
@@ -77,7 +77,7 @@ export const fiche = defineCommand({
 
 export const site = defineCommand({
   name: "site",
-  description: "Lien entre le bot et le site : salon de logs staff, resynchronisation des rangs.",
+  description: "Lien entre le bot et le site : salon de logs staff, resynchronisation de la présence.",
   module: MODULE,
   defaultPermission: PERMISSION.gestion,
   protected: true,
@@ -88,26 +88,27 @@ export const site = defineCommand({
       description: "Salon où le staff suit le parcours des joueurs (vide pour le retirer)",
       options: [{ name: "salon", description: "Salon textuel", type: "channel" }],
     },
-    { name: "resync", description: "Resynchronise les rangs et la présence de tous les comptes du site" },
+    { name: "resync", description: "Resynchronise la présence sur le serveur de tous les comptes du site" },
   ],
   async run(ctx) {
-    const { DISCORD_ROLE_STAFF, DISCORD_ROLE_RECRUTEUR, DISCORD_ROLE_ASPIRANT, DISCORD_ROLE_HELIKEEN, SITE_URL } = env();
+    const { DISCORD_ROLE_ASPIRANT, DISCORD_ROLE_HELIKEEN, SITE_URL } = env();
     const roles = (ids: (string | undefined)[]) => ids.filter(Boolean).map(id => `<@&${id}>`).join(" ") || "*Non configuré*";
 
     switch (ctx.subcommand) {
       case "voir": {
         const channelId = siteSettings(ctx.settings).salonLogs;
+        const ranks = await roleRanks();
         await ctx.reply(
           {
             embeds: [
               embed(ctx.settings)
                 .setTitle("Lien avec le site")
-                .setDescription("Les rôles viennent des variables d'environnement, partagées avec le site.")
+                .setDescription("Les rangs du site (recruteur, admin, owner) se règlent sur le site ; le bot ne fait que les lire.")
                 .addFields(
                   { name: "Site", value: SITE_URL },
                   { name: "Salon de logs staff", value: channelId ? `<#${channelId}>` : "*Aucun*" },
-                  { name: "Rang staff", value: roles(DISCORD_ROLE_STAFF), inline: true },
-                  { name: "Rang recruteur", value: roles(DISCORD_ROLE_RECRUTEUR), inline: true },
+                  { name: "Rang admin", value: roles(ranks.admin), inline: true },
+                  { name: "Rang recruteur", value: roles(ranks.recruteur), inline: true },
                   { name: "Parcours", value: `Attente du vocal : ${roles([DISCORD_ROLE_ASPIRANT])}\nWhitelisté : ${roles([DISCORD_ROLE_HELIKEEN])}` },
                 ),
             ],
@@ -131,7 +132,7 @@ export const site = defineCommand({
             embeds: [
               notice(
                 ctx.settings,
-                `${result.accounts} compte(s) du site vérifié(s) parmi ${result.members} membre(s) du serveur : ${result.updated.length} correction(s).`,
+                `${result.accounts} compte(s) du site vérifié(s) parmi ${result.members} membre(s) du serveur : ${result.updated.length} présence(s) corrigée(s). Les rangs sont relus par le site.`,
                 "Resynchronisation terminée",
               ),
             ],

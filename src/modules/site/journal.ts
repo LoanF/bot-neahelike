@@ -5,12 +5,12 @@ import { embed, type Tone } from "@/core/embeds";
 import { row } from "@/core/panels";
 import { sql, type Tables } from "@/db";
 import { logger } from "@/logger";
-import { profileUrl } from "./fiche";
-import { CRITERION_LABELS, labelList, STEP_LABELS } from "./labels";
+import { profileUrl, RANK_LABELS } from "./fiche";
+import { CRITERION_LABELS, label, labelList, STEP_LABELS } from "./labels";
 import { MODULE, siteSettings, updateSiteSettings, type JournalCursor } from "./settings";
 import { staffLog } from "./staff-log";
 
-/** Événements de candidature écrits par le site et relayés au staff. */
+/** Événements écrits par le site et relayés au staff : candidatures et changements de rang. */
 export const RELAYED_EVENTS = [
   "candidature.envoyee",
   "candidature.validee",
@@ -18,6 +18,7 @@ export const RELAYED_EVENTS = [
   "candidature.refusee",
   "entretien.valide",
   "candidature.supprimee",
+  "rang.change",
 ] as const;
 
 export type JournalEvent = Pick<Tables<"events">, "id" | "type" | "subject_id" | "actor_id" | "data" | "created_at">;
@@ -59,6 +60,8 @@ export function describeEvent(event: JournalEvent): { title: string; tone: Tone;
     }
     case "entretien.valide":
       return { title: "🏛️ Entretien validé", tone: "or", text: `${actor} a validé l'entretien de ${player} : joueur whitelisté.` };
+    case "rang.change":
+      return { title: "🛡️ Rang du site modifié", tone: "bronze", text: `${player} : ${label(RANK_LABELS, data.avant)} → **${label(RANK_LABELS, data.apres)}**` };
     case "candidature.supprimee":
       return { title: "🗑️ Candidature effacée", tone: "bronze", text: `${actor} a effacé la candidature de ${player}.` };
     default:
