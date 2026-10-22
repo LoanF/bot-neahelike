@@ -1,4 +1,5 @@
 import type { Guild, GuildMember } from "discord.js";
+import { loadAllMembers } from "@/core/members";
 import { sql } from "@/db";
 
 export interface MemberSnapshot {
@@ -71,8 +72,8 @@ export interface ResyncReport {
  * Resynchronisation complète de la présence : tous les comptes du site comparés aux membres du serveur ;
  * seuls les écarts sont écrits. Les rangs sont relus par le site lui-même toutes les 5 minutes.
  */
-export async function resyncGuild(guild: Guild): Promise<ResyncReport> {
-  const members = await guild.members.fetch();
+export async function resyncGuild(guild: Guild, { refresh = false } = {}): Promise<ResyncReport> {
+  const members = await loadAllMembers(guild, { refresh });
   const accounts = await sql()<{ id: string; in_guild: boolean }[]>`select id, in_guild from users`;
 
   const updated: ResyncReport["updated"] = [];

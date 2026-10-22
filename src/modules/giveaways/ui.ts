@@ -6,6 +6,7 @@ import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { button, ICON, row } from "@/core/panels";
+import { loadAllMembers } from "@/core/members";
 import { fetchPublished } from "@/core/published";
 import { logger } from "@/logger";
 import { MODULE, pickWinners } from "./logic";
@@ -81,18 +82,18 @@ export function eligible(guild: Pick<Guild, "members">, giveaway: Pick<Giveaway,
   });
 }
 
-/** Charge les participants absents du cache, pour ne pas écarter un membre simplement hors ligne. */
-export async function loadMembers(guild: Guild, userIds: string[]) {
-  const missing = userIds.filter(userId => !guild.members.cache.has(userId));
-  for (let index = 0; index < missing.length; index += 100) {
-    await guild.members.fetch({ user: missing.slice(index, index + 100) }).catch(error => logger.warn({ err: error }, "Chargement des participants impossible"));
-  }
+/**
+ * Participants absents du cache : la liste complète des membres est chargée une fois (chargement partagé),
+ * puis tenue à jour par l'intent « Server Members ». Un participant absent ensuite a quitté le serveur.
+ */
+export async function loadMembers(guild: Guild) {
+  await loadAllMembers(guild).catch(error => logger.warn({ err: error }, "Chargement des participants impossible"));
 }
 
 /** Participants éligibles d'un giveaway, membres chargés au besoin. */
 export async function eligibleEntries(guild: Guild, giveaway: Giveaway): Promise<string[]> {
   const entries = await entriesOf(giveaway.id);
-  await loadMembers(guild, entries);
+  await loadMembers(guild);
   return eligible(guild, giveaway, entries);
 }
 

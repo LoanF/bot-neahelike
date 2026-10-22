@@ -1,6 +1,7 @@
 import { Events, type Client, type Guild } from "discord.js";
 import { getSettings } from "@/config/store";
 import { isModuleEnabled } from "@/core/access";
+import { loadAllMembers } from "@/core/members";
 import { defineCommand, PERMISSION } from "@/core/command";
 import { UserError } from "@/core/errors";
 import type { BotModule } from "@/core/registry";
@@ -82,8 +83,8 @@ function setup(client: Client) {
 }
 
 async function onReady(guild: Guild) {
-  // Tous les membres en cache : compteur des citoyens et rôle soutien justes dès le démarrage.
-  await guild.members.fetch().catch(error => logger.warn({ err: error }, "Chargement des membres impossible"));
+  // Tous les membres en cache (chargement partagé avec les autres modules) : compteur des citoyens et rôle soutien justes dès le démarrage.
+  await loadAllMembers(guild).catch(error => logger.warn({ err: error }, "Chargement des membres impossible"));
   const settings = await getSettings(guild.id);
   await cleanTemporaries(guild, settings).catch(error => logger.warn({ err: error }, "Nettoyage des vocaux temporaires impossible"));
 

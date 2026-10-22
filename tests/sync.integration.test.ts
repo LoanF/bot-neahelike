@@ -83,7 +83,18 @@ describe.skipIf(!url)("synchronisation de la présence", async () => {
     await sql()`insert into users (id, username, in_guild) values (${UNKNOWN}, 'parti', true)`;
 
     const discordMember = { id: USER, roles: { cache: new Collection([["autre", {}]]) }, user: { username: "kallias", globalName: "Kallias", avatar: null } };
-    const guild = { members: { fetch: async () => new Collection([[USER, discordMember]]) } };
+    const members = new Collection([[USER, discordMember]]);
+    let fetches = 0;
+    const guild = {
+      id: "100000000000000444",
+      members: {
+        cache: members,
+        fetch: async () => {
+          fetches += 1;
+          return members;
+        },
+      },
+    };
 
     const report = await resyncGuild(guild as never);
     const corrected = Object.fromEntries(report.updated.filter(item => [USER, UNKNOWN].includes(item.userId)).map(item => [item.userId, item.result]));
@@ -92,6 +103,8 @@ describe.skipIf(!url)("synchronisation de la présence", async () => {
 
     const again = await resyncGuild(guild as never);
     expect(again.updated.filter(item => [USER, UNKNOWN].includes(item.userId))).toHaveLength(0);
+    // La liste des membres n'est demandée qu'une fois à Discord : le second passage lit le cache.
+    expect(fetches).toBe(1);
   });
 
   it("ne crée jamais de compte pour un membre absent du site", async () => {

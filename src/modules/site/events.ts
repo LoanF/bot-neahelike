@@ -17,9 +17,10 @@ async function sync(userId: string, member: MemberSnapshot | null, rolesChanged 
 }
 
 /** Resynchronisation complète, journalisée. */
-export async function resync(guild: Guild) {
+/** `refresh` : recharger la liste des membres (après une coupure, ou à la demande) plutôt que se fier au cache. */
+export async function resync(guild: Guild, { refresh = false } = {}) {
   const started = Date.now();
-  const result = await resyncGuild(guild);
+  const result = await resyncGuild(guild, { refresh });
   for (const { userId, result: change } of result.updated) report(userId, change);
   logger.info(
     { membres: result.members, comptes: result.accounts, corriges: result.updated.length, duree: Date.now() - started },
@@ -58,6 +59,6 @@ export function setupMemberSync(client: Client) {
       return;
     }
     const guild = client.guilds.cache.get(guildId);
-    if (guild) resync(guild).catch(error => logger.error({ err: error }, "Resynchronisation après reconnexion impossible"));
+    if (guild) resync(guild, { refresh: true }).catch(error => logger.error({ err: error }, "Resynchronisation après reconnexion impossible"));
   });
 }
