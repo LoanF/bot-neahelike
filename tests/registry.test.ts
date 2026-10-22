@@ -22,6 +22,19 @@ describe("registre des modules", () => {
     expect(registry.slashCommands().length).toBeLessThanOrEqual(100);
   });
 
+  it("garde les sous-commandes et options dans les limites de Discord", () => {
+    type Option = { name: string; description: string; options?: Option[]; choices?: unknown[] };
+    const check = (option: Option) => {
+      expect(option.name, option.name).toMatch(/^[\p{Ll}\p{Lo}\p{N}_-]{1,32}$/u);
+      expect(option.description.length, `${option.name} : ${option.description}`).toBeLessThanOrEqual(100);
+      expect(option.description.length).toBeGreaterThan(0);
+      expect(option.options?.length ?? 0).toBeLessThanOrEqual(25);
+      expect(option.choices?.length ?? 0).toBeLessThanOrEqual(25);
+      option.options?.forEach(check);
+    };
+    for (const command of registry.slashCommands()) (command.options as Option[] | undefined)?.forEach(check);
+  });
+
   it("retrouve une commande par son alias, sans tenir compte de la casse", () => {
     expect(registry.find("HELP")?.name).toBe("aide");
     expect(registry.find("settings")?.name).toBe("config");
