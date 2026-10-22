@@ -55,11 +55,7 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 
 - **Statut FiveM** : indiquez l'adresse du serveur (IP:port) et le lien de connexion. Publiez le statut dans un salon : il se met à jour chaque minute. Tout le monde peut taper `/statut`.
 - **Compteurs** : un salon par compteur (membres, joueurs en jeu, citoyens whitelistés). Prenez un salon vocal verrouillé ; son nom affiche la valeur (`{n}`). Mise à jour toutes les 10 minutes, limite imposée par Discord.
-- **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou l'un des **textes autorisés** dans son statut personnalisé (lien du Discord, nom du serveur…), et retiré sinon. Les majuscules et les accents ne comptent pas. Tout se règle depuis Discord, dans `/serveur` ▸ Rôle soutien ou avec `/soutien` :
-  - `/soutien role @Soutien` : rôle donné (vide pour arrêter) ;
-  - `/soutien ajouter discord.gg/neahelike` et `/soutien retirer …` : jusqu'à 25 textes ;
-  - `/soutien tag actif:oui` : compter le tag du serveur ;
-  - `/soutien voir`, `/soutien verifier` : réglages actuels, vérification immédiate de tout le monde.
+- **Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou l'un des **textes autorisés** dans son statut personnalisé (lien du Discord, nom du serveur…), et retiré sinon. Les majuscules et les accents ne comptent pas. Tout se règle depuis Discord, dans le panneau `/soutien` (ou `/serveur` ▸ Rôle soutien) : menu pour choisir le rôle, bouton « Ajouter un texte » (jusqu'à 25), menu « Retirer un texte », bouton pour compter ou non le tag du serveur, et « Vérifier tout le monde ».
 - **Vocaux temporaires** : choisissez un salon créateur. En le rejoignant, un membre obtient son propre vocal dans la même catégorie, qu'il peut renommer et limiter ; le salon disparaît une fois vide.
 
 ## /giveaway : les giveaways

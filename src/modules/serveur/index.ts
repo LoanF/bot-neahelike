@@ -7,7 +7,7 @@ import type { BotModule } from "@/core/registry";
 import { env } from "@/env";
 import { logger } from "@/logger";
 import { cleanTemporaries, handleVoice, lastFivemStatus, reconcileAllSupport, reconcileSupport, refreshFivem, statusPayload, updateCounters, updateStatusMessage } from "./live";
-import { renderServerPanel, serverPanel } from "./panel";
+import { renderServerPanel, serverPanel, supportPanel } from "./panel";
 import { MODULE, serverSettings } from "./settings";
 import { soutien } from "./support";
 
@@ -106,7 +106,7 @@ export const serverModule: BotModule = {
   icon: "🎮",
   description: "Statut du serveur FiveM, salons compteurs, rôle soutien et vocaux temporaires.",
   commands: [serveur, statut, soutien],
-  components: [serverPanel],
+  components: [serverPanel, supportPanel],
   setup,
   onReady,
 };
