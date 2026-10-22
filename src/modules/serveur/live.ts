@@ -118,7 +118,7 @@ export async function reconcileSupport(member: GuildMember, server: ServerSettin
   if (wanted === has) return;
   // Hors ligne, Discord ne transmet plus le statut : on ne retire pas un rôle obtenu par le texte du statut.
   const statusUnknown = !presence || presence.status === "offline";
-  if (!wanted && statusUnknown && server.soutienTexte) return;
+  if (!wanted && statusUnknown && server.soutienTextes?.length) return;
   // Le rôle a pu gagner des permissions depuis son réglage : revérifié avant chaque attribution.
   const role = member.guild.roles.cache.get(roleId);
   const problem = role ? roleProblem(role, member.guild.id, member.guild.members.me?.roles.highest.position ?? 0) : "rôle supprimé";

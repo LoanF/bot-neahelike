@@ -7,14 +7,14 @@ import { UserError } from "@/core/errors";
 import { button, choice, field, ICON, modal, row, status } from "@/core/panels";
 import { roleProblem } from "@/modules/accueil/settings";
 import { counterValues, lastFivemStatus, reconcileAllSupport, refreshFivem, statusPayload, updateCounters } from "./live";
-import { COUNTERS, counterName, DEFAULT_VOICE_NAME, parseAddress, saveServerSettings, serverSettings, type CounterId, type ServerSettings } from "./settings";
+import { addSupportText, COUNTERS, counterName, DEFAULT_VOICE_NAME, MAX_SUPPORT_TEXTS, parseAddress, removeSupportText, saveServerSettings, serverSettings, SUPPORT_TEXT_MAX, type CounterId, type ServerSettings } from "./settings";
 
 const PREFIX = "srv";
 
 const GUIDE =
   "**Statut FiveM** : indiquez l'adresse du serveur (IP:port) et, si vous voulez, le lien de connexion (cfx.re/join/…). Publiez le statut dans un salon : il se met à jour chaque minute. `/statut` le montre à tout le monde.\n" +
   "**Compteurs** : choisissez un salon (vocal de préférence, verrouillé) pour chaque compteur ; son nom affiche la valeur, `{n}`. Discord limite les renommages : mise à jour toutes les 10 minutes.\n" +
-  "**Rôle soutien** : donné automatiquement à qui affiche le tag du serveur sur son profil, ou un texte choisi dans son statut personnalisé ; retiré quand ce n'est plus le cas.\n" +
+  "**Rôle soutien** (aussi par `/soutien`) : donné automatiquement à qui affiche le tag du serveur sur son profil, ou l'un des textes autorisés dans son statut personnalisé ; retiré quand ce n'est plus le cas.\n" +
   "**Vocaux temporaires** : rejoindre le salon créateur ouvre un salon vocal à son nom, dans la même catégorie, supprimé une fois vide. Son créateur peut le renommer et le limiter.";
 
 interface View {
@@ -137,6 +137,7 @@ function countersView(view: View): Payload {
 
 function supportView(view: View): Payload {
   const server = serverSettings(view.settings);
+  const texts = server.soutienTextes ?? [];
   const select = new RoleSelectMenuBuilder().setCustomId(id(view, "soutien-role")).setPlaceholder("Rôle soutien").setMinValues(0).setMaxValues(1);
   if (server.soutienRoleId && view.guild.roles.cache.has(server.soutienRoleId)) select.addDefaultRoles(server.soutienRoleId);
   return withNotice(view, {
@@ -144,14 +145,20 @@ function supportView(view: View): Payload {
       panel(view, "💛 Rôle soutien", "Remerciez ceux qui affichent le serveur : le rôle est donné et retiré automatiquement.").addFields(
         { name: "Rôle", value: server.soutienRoleId ? `<@&${server.soutienRoleId}>` : "*Aucun*", inline: true },
         { name: "Tag du serveur", value: server.soutienTag ? "Compté" : "Ignoré", inline: true },
-        { name: "Texte du statut", value: server.soutienTexte ? `« ${server.soutienTexte} »` : "*Aucun*", inline: true },
+        {
+          name: `Textes autorisés dans le statut (${texts.length} sur ${MAX_SUPPORT_TEXTS})`,
+          value: texts.map(text => `• \`${text.replace(/`/g, "'")}\``).join("\n").slice(0, 1024) || "*Aucun : seul le tag du serveur compte.*",
+        },
       ),
     ],
     components: [
       row(select),
+      ...(texts.length
+        ? [row(choice(id(view, "soutien-retirer"), texts.map((text, index) => ({ label: text.slice(0, 100), value: String(index), emoji: ICON.supprimer })), "Retirer un texte"))]
+        : []),
       row(
         button(id(view, "soutien-tag"), server.soutienTag ? "Tag compté" : "Tag ignoré", { emoji: server.soutienTag ? ICON.actif : ICON.inactif, style: ButtonStyle.Secondary }),
-        button(id(view, "soutien-texte"), "Texte du statut", { emoji: ICON.modifier }),
+        button(id(view, "soutien-ajouter"), "Ajouter un texte", { emoji: ICON.ajouter, style: ButtonStyle.Success, disabled: texts.length >= MAX_SUPPORT_TEXTS }),
         button(id(view, "soutien-verifier"), "Vérifier tout le monde", { emoji: "🔄", disabled: !server.soutienRoleId }),
       ),
       back(view),
@@ -360,16 +367,22 @@ export const serverPanel: ComponentHandler = {
       }
       case "soutien-tag":
         return commit(interaction, settings, { ...server, soutienTag: !server.soutienTag }, "soutien", server.soutienTag ? "Le tag du serveur n'est plus compté." : "Le tag du serveur donne le rôle soutien.");
-      case "soutien-texte":
+      case "soutien-ajouter":
         return openModal(
-          modal(id(view, "soutien-texte-ok"), "Texte du statut", [
-            { id: "texte", label: "Texte à chercher (vide pour ne pas l'utiliser)", value: server.soutienTexte, maxLength: 100, placeholder: "discord.gg/neahelike" },
+          modal(id(view, "soutien-ajouter-ok"), "Texte autorisé dans le statut", [
+            { id: "texte", label: "Texte à chercher dans le statut", required: true, maxLength: SUPPORT_TEXT_MAX, placeholder: "discord.gg/neahelike" },
           ]),
         );
-      case "soutien-texte-ok": {
-        const text = field(submitted(interaction), "texte");
-        if (text && text.length < 2) throw new UserError("Le texte doit faire au moins 2 caractères.");
-        return commit(interaction, settings, { ...server, soutienTexte: text ?? undefined }, "soutien", text ? `Statut contenant « ${text} » : rôle soutien.` : "Le statut n'est plus regardé.");
+      case "soutien-ajouter-ok": {
+        const text = field(submitted(interaction), "texte") ?? "";
+        const soutienTextes = addSupportText(server.soutienTextes ?? [], text);
+        return commit(interaction, settings, { ...server, soutienTextes }, "soutien", `Un statut contenant « ${text} » donne le rôle soutien.`);
+      }
+      case "soutien-retirer": {
+        if (!interaction.isStringSelectMenu()) throw new Error("Menu attendu.");
+        const text = (server.soutienTextes ?? [])[Number(interaction.values[0])];
+        if (!text) return show(interaction, "soutien");
+        return commit(interaction, settings, { ...server, soutienTextes: removeSupportText(server.soutienTextes ?? [], text) }, "soutien", `« ${text} » retiré des textes du rôle soutien.`);
       }
       case "soutien-verifier": {
         await interaction.deferUpdate();

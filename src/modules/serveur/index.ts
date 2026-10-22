@@ -9,6 +9,7 @@ import { logger } from "@/logger";
 import { cleanTemporaries, handleVoice, lastFivemStatus, reconcileAllSupport, reconcileSupport, refreshFivem, statusPayload, updateCounters, updateStatusMessage } from "./live";
 import { renderServerPanel, serverPanel } from "./panel";
 import { MODULE, serverSettings } from "./settings";
+import { soutien } from "./support";
 
 /** Statut FiveM : une minute. Compteurs : dix minutes (limite de renommage de Discord). Soutien : quinze minutes. */
 const STATUS_EVERY_MS = 60 * 1000;
@@ -104,7 +105,7 @@ export const serverModule: BotModule = {
   label: "Vie du serveur",
   icon: "🎮",
   description: "Statut du serveur FiveM, salons compteurs, rôle soutien et vocaux temporaires.",
-  commands: [serveur, statut],
+  commands: [serveur, statut, soutien],
   components: [serverPanel],
   setup,
   onReady,

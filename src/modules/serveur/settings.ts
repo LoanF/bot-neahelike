@@ -19,6 +19,11 @@ export type CounterId = keyof typeof COUNTERS;
 
 const counterSchema = z.object({ channelId: snowflake, name: z.string().min(1).max(90) });
 
+/** Textes du rôle soutien : 25 au plus (un menu de Discord), de 2 à 100 caractères. */
+export const MAX_SUPPORT_TEXTS = 25;
+export const SUPPORT_TEXT_MIN = 2;
+export const SUPPORT_TEXT_MAX = 100;
+
 const schema = z.object({
   /** Adresse du serveur FiveM, `ip:port` (port 30120 par défaut). */
   fivemAdresse: z.string().max(100).optional(),
@@ -27,9 +32,12 @@ const schema = z.object({
   /** Message de statut publié, mis à jour chaque minute. */
   statutMessage: messageRef.optional(),
   compteurs: z.object({ membres: counterSchema.optional(), joueurs: counterSchema.optional(), citoyens: counterSchema.optional() }).optional(),
-  /** Rôle soutien : donné à qui porte le tag du serveur ou a le texte dans son statut. */
+  /** Rôle soutien : donné à qui porte le tag du serveur ou a l'un des textes dans son statut. */
   soutienRoleId: snowflake.optional(),
   soutienTag: z.boolean().optional(),
+  /** Textes autorisés dans le statut personnalisé (lien du Discord, nom du serveur…). */
+  soutienTextes: z.array(z.string().min(SUPPORT_TEXT_MIN).max(SUPPORT_TEXT_MAX)).max(MAX_SUPPORT_TEXTS).optional(),
+  /** Ancien réglage à un seul texte, repris dans `soutienTextes`. */
   soutienTexte: z.string().min(2).max(100).optional(),
   /** Salon vocal « rejoindre pour créer ». */
   vocalCreateurId: snowflake.optional(),
@@ -45,7 +53,10 @@ export const DEFAULT_VOICE_NAME = "🔊 Vocal de {user.name}";
 
 export function serverSettings(settings: GuildSettings): ServerSettings {
   const parsed = schema.safeParse(settings.modules.get(MODULE)?.settings ?? {});
-  return parsed.success ? parsed.data : {};
+  if (!parsed.success) return {};
+  const { soutienTexte, ...data } = parsed.data;
+  // Ancien texte unique : il devient le premier texte de la liste.
+  return soutienTexte ? { ...data, soutienTextes: addSupportText(data.soutienTextes ?? [], soutienTexte) } : data;
 }
 
 /**
@@ -107,9 +118,38 @@ interface SupportCheck {
   customStatus?: string | null;
 }
 
-/** Le membre mérite-t-il le rôle soutien ? Tag du serveur affiché, ou texte choisi présent dans son statut. */
-export function supports(server: Pick<ServerSettings, "soutienTag" | "soutienTexte">, member: SupportCheck): boolean {
+/** Comparaison des textes de statut : sans majuscules ni accents, espaces resserrés. */
+export function normalizeStatus(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Ajoute un texte autorisé ; refuse un texte trop court, trop long, en double ou au-delà de la limite. */
+export function addSupportText(texts: string[], input: string): string[] {
+  const text = input.trim().replace(/\s+/g, " ");
+  if (text.length < SUPPORT_TEXT_MIN || text.length > SUPPORT_TEXT_MAX) {
+    throw new UserError(`Un texte doit faire entre ${SUPPORT_TEXT_MIN} et ${SUPPORT_TEXT_MAX} caractères.`);
+  }
+  if (texts.some(existing => normalizeStatus(existing) === normalizeStatus(text))) return texts;
+  if (texts.length >= MAX_SUPPORT_TEXTS) throw new UserError(`${MAX_SUPPORT_TEXTS} textes au plus : retirez-en un d'abord.`);
+  return [...texts, text];
+}
+
+/** Retire un texte autorisé (sans tenir compte des majuscules ni des accents). */
+export function removeSupportText(texts: string[], input: string): string[] {
+  const kept = texts.filter(existing => normalizeStatus(existing) !== normalizeStatus(input));
+  if (kept.length === texts.length) throw new UserError(`« ${input} » ne fait pas partie des textes du rôle soutien.`);
+  return kept;
+}
+
+/** Le membre mérite-t-il le rôle soutien ? Tag du serveur affiché, ou l'un des textes autorisés dans son statut. */
+export function supports(server: Pick<ServerSettings, "soutienTag" | "soutienTextes">, member: SupportCheck): boolean {
   const tag = Boolean(server.soutienTag && member.primaryGuild?.identityEnabled && member.primaryGuild.identityGuildId === member.guildId);
-  const text = Boolean(server.soutienTexte && member.customStatus?.toLowerCase().includes(server.soutienTexte.toLowerCase()));
+  const status = member.customStatus ? normalizeStatus(member.customStatus) : "";
+  const text = Boolean(status && server.soutienTextes?.some(allowed => status.includes(normalizeStatus(allowed))));
   return tag || text;
 }

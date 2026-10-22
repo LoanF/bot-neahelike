@@ -106,8 +106,8 @@ describe("vie du serveur", async () => {
     expect(supports({ soutienTag: false }, tagged)).toBe(false);
     expect(supports({ soutienTag: true }, { ...tagged, primaryGuild: { identityGuildId: guild.id, identityEnabled: false } })).toBe(false);
     expect(supports({ soutienTag: true }, otherTag)).toBe(false);
-    expect(supports({ soutienTexte: "discord.gg/neahelike" }, otherTag)).toBe(true);
-    expect(supports({ soutienTexte: "discord.gg/neahelike" }, { guildId: guild.id })).toBe(false);
+    expect(supports({ soutienTextes: ["discord.gg/neahelike"] }, otherTag)).toBe(true);
+    expect(supports({ soutienTextes: ["discord.gg/neahelike"] }, { guildId: guild.id })).toBe(false);
   });
 
   describe("attribution du rôle soutien", async () => {
@@ -135,7 +135,7 @@ describe("vie du serveur", async () => {
       return { fake: fake as never, calls };
     }
     const status = (text: string | null, online = "online") => ({ status: online, activities: text === null ? [] : [{ type: 4, state: text }] }) as never;
-    const server = { soutienRoleId: ROLE, soutienTexte: "discord.gg/neahelike" };
+    const server = { soutienRoleId: ROLE, soutienTextes: ["discord.gg/neahelike"] };
 
     it("donne le rôle quand le statut contient le texte, et le retire quand il disparaît", async () => {
       const newcomer = member(false);
@@ -157,6 +157,60 @@ describe("vie du serveur", async () => {
       const risky = member(false, 8n);
       await reconcileSupport(risky.fake, server, status("discord.gg/neahelike"));
       expect(risky.calls).toEqual([]);
+    });
+  });
+
+  describe("textes autorisés pour le rôle soutien", async () => {
+    const { addSupportText, MAX_SUPPORT_TEXTS, removeSupportText, serverSettings } = await import("@/modules/serveur/settings");
+    const { supportSummary, textChoices } = await import("@/modules/serveur/support");
+
+    it("accepte plusieurs textes, sans doublon ni majuscules ou accents en double", () => {
+      let texts = addSupportText([], "discord.gg/neahelike");
+      texts = addSupportText(texts, "  Néa   Hélikè ");
+      texts = addSupportText(texts, "DISCORD.GG/NEAHELIKE");
+      texts = addSupportText(texts, "nea helike");
+      expect(texts).toEqual(["discord.gg/neahelike", "Néa Hélikè"]);
+    });
+
+    it("refuse un texte trop court, trop long, ou au-delà de la limite", () => {
+      expect(() => addSupportText([], "x")).toThrow("entre 2 et 100");
+      expect(() => addSupportText([], "x".repeat(101))).toThrow("entre 2 et 100");
+      const full = Array.from({ length: MAX_SUPPORT_TEXTS }, (_, index) => `texte ${index}`);
+      expect(() => addSupportText(full, "un de plus")).toThrow("25 textes au plus");
+    });
+
+    it("retire un texte sans tenir compte des majuscules et signale un texte inconnu", () => {
+      expect(removeSupportText(["discord.gg/neahelike", "Néa Hélikè"], "NEA HELIKE")).toEqual(["discord.gg/neahelike"]);
+      expect(() => removeSupportText(["a b"], "inconnu")).toThrow("ne fait pas partie");
+    });
+
+    it("donne le rôle si le statut contient l'un des textes, accents et majuscules ignorés", () => {
+      const server = { soutienTextes: ["discord.gg/neahelike", "Néa Hélikè"] };
+      expect(supports(server, { guildId: guild.id, customStatus: "Je joue à NEA HELIKE !" })).toBe(true);
+      expect(supports(server, { guildId: guild.id, customStatus: "rejoins discord.gg/NeaHelike" })).toBe(true);
+      expect(supports(server, { guildId: guild.id, customStatus: "Autre serveur" })).toBe(false);
+      expect(supports({ soutienTextes: [] }, { guildId: guild.id, customStatus: "discord.gg/neahelike" })).toBe(false);
+    });
+
+    it("reprend l'ancien réglage à un seul texte dans la liste", () => {
+      expect(serverSettings(settingsWith({ soutienTexte: "discord.gg/neahelike" })).soutienTextes).toEqual(["discord.gg/neahelike"]);
+      expect(serverSettings(settingsWith({ soutienTexte: "discord.gg/neahelike", soutienTextes: ["Néa"] })).soutienTextes).toEqual(["Néa", "discord.gg/neahelike"]);
+    });
+
+    it("propose les textes à retirer pendant la saisie, et résume les réglages", () => {
+      const server = { soutienRoleId: "500000000000000001", soutienTag: true, soutienTextes: ["discord.gg/neahelike", "Néa Hélikè"] };
+      expect(textChoices(server, "nea")).toEqual([
+        { name: "discord.gg/neahelike", value: "discord.gg/neahelike" },
+        { name: "Néa Hélikè", value: "Néa Hélikè" },
+      ]);
+      expect(textChoices(server, "disc")).toHaveLength(1);
+      expect(supportSummary(server)).toContain("**Tag du serveur :** compté");
+      expect(supportSummary(server)).toContain("• `Néa Hélikè`");
+    });
+
+    it("le panneau tient avec 25 textes", () => {
+      const soutienTextes = Array.from({ length: MAX_SUPPORT_TEXTS }, (_, index) => `texte numéro ${index} ${"x".repeat(80)}`);
+      checkLimits(renderServerPanel({ settings: settingsWith({ soutienTextes }), guild, owner: "300000000000000001" }, "soutien"));
     });
   });
 
