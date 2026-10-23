@@ -22,8 +22,9 @@ export interface ComponentHandler {
 const MAX_CUSTOM_ID = 100;
 
 export function customId(prefix: string, ownerId: string, action: string, ...args: string[]): string {
-  // Un « : » décalerait les champs au découpage, propriétaire compris (contrôle de qui peut cliquer).
-  if ([prefix, ownerId, action].some(part => part.includes(":"))) throw new Error(`Champ d'identifiant de composant invalide : ${prefix}:${ownerId}:${action}`);
+  // Un « : » dans le préfixe ou le propriétaire décalerait le propriétaire au découpage (contrôle de qui peut cliquer).
+  // Dans l'action, il est permis : la suite part dans les arguments (ex. « compteur:membres »).
+  if (prefix.includes(":") || ownerId.includes(":")) throw new Error(`Champ d'identifiant de composant invalide : ${prefix}:${ownerId}`);
   const id = [prefix, ownerId, action, ...args].join(":");
   if (id.length > MAX_CUSTOM_ID) throw new Error(`Identifiant de composant trop long (${id.length}) : ${id}`);
   return id;

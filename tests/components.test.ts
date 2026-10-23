@@ -6,10 +6,11 @@ describe("identifiants de composants", () => {
     expect(parseCustomId(customId("cfg", "300000000000000001", "go", "niveau", "a:b"))).toEqual({ prefix: "cfg", ownerId: "300000000000000001", action: "go", args: ["niveau", "a", "b"] });
   });
 
-  it("refusent un « : » dans le préfixe, le propriétaire ou l'action, qui décalerait le contrôle du propriétaire", () => {
+  it("refusent un « : » dans le préfixe ou le propriétaire, qui décalerait le contrôle du propriétaire", () => {
     expect(() => customId("cfg", "*:300000000000000001", "go")).toThrow("invalide");
     expect(() => customId("c:fg", "300000000000000001", "go")).toThrow("invalide");
-    expect(() => customId("cfg", "300000000000000001", "go:x")).toThrow("invalide");
+    // Dans l'action, la suite part dans les arguments.
+    expect(parseCustomId(customId("srv", "300000000000000001", "compteur:membres"))).toMatchObject({ action: "compteur", args: ["membres"] });
   });
 
   it("refusent un identifiant de plus de 100 caractères", () => {
