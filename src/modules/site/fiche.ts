@@ -75,6 +75,8 @@ export function ficheEmbed(settings: GuildSettings, profile: Profile, applicatio
     application.submitted_at && `Envoyée ${when(application.submitted_at)}`,
     application.viewed_at && `Lue ${when(application.viewed_at)}`,
     application.decided_at && `Décision ${when(application.decided_at)}${application.reviewer_id ? ` par <@${application.reviewer_id}>` : ""}`,
+    application.whitelist_revoked_at &&
+      `**Whitelist retirée** ${when(application.whitelist_revoked_at)}${application.whitelist_revoked_by_id ? ` par <@${application.whitelist_revoked_by_id}>` : ""}${application.whitelist_revoke_reason ? ` : ${text(application.whitelist_revoke_reason, 300)}` : ""}`,
   ];
   result.addFields({ name: "Candidature", value: dates.filter(Boolean).join("\n") });
 

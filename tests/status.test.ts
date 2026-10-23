@@ -34,6 +34,9 @@ describe("statut de candidature", async () => {
     refusal_criteria: null,
     refusal_comment: null,
     decided_at: null,
+    whitelist_revoked_at: null,
+    whitelist_revoked_by_id: null,
+    whitelist_revoke_reason: null,
     created_at: "2026-10-01 10:00:00+00",
     updated_at: "2026-10-01 10:00:00+00",
     ...patch,
@@ -61,6 +64,12 @@ describe("statut de candidature", async () => {
     const refused = application({ status: "refusee", decided_at: "2026-07-01 10:00:00+00" });
     expect(reapplyDate(refused)?.toISOString()).toBe("2026-10-01T10:00:00.000Z");
     expect(statusKey(linked, refused, [], now)).toBe("candidature.statut.compte-lie");
+  });
+
+  it("repart de zéro quand la whitelist a été retirée, comme le portail", () => {
+    const revoked = application({ status: "whitelistee", whitelist_revoked_at: "2026-10-20 10:00:00+00", whitelist_revoked_by_id: "900000000000000002" });
+    expect(statusKey(linked, revoked, [], now)).toBe("candidature.statut.compte-lie");
+    expect(statusKey(linked, revoked, [ASPIRANT], now)).toBe("candidature.statut.attente-vocal");
   });
 
   it("donne la priorité au rôle de citoyen", () => {

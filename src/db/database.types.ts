@@ -33,6 +33,9 @@ export type Database = {
           updated_at: string
           user_id: string
           viewed_at: string | null
+          whitelist_revoke_reason: string | null
+          whitelist_revoked_at: string | null
+          whitelist_revoked_by_id: string | null
         }
         Insert: {
           background?: Json | null
@@ -52,6 +55,9 @@ export type Database = {
           updated_at?: string
           user_id: string
           viewed_at?: string | null
+          whitelist_revoke_reason?: string | null
+          whitelist_revoked_at?: string | null
+          whitelist_revoked_by_id?: string | null
         }
         Update: {
           background?: Json | null
@@ -71,6 +77,9 @@ export type Database = {
           updated_at?: string
           user_id?: string
           viewed_at?: string | null
+          whitelist_revoke_reason?: string | null
+          whitelist_revoked_at?: string | null
+          whitelist_revoked_by_id?: string | null
         }
         Relationships: [
           {
@@ -87,7 +96,38 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "applications_whitelist_revoked_by_id_users_id_fk"
+            columns: ["whitelist_revoked_by_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      blacklist: {
+        Row: {
+          created_at: string
+          created_by_id: string
+          discord_id: string
+          reason: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_id: string
+          discord_id: string
+          reason?: string | null
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_id?: string
+          discord_id?: string
+          reason?: string | null
+          source?: string
+        }
+        Relationships: []
       }
       bot_command_permissions: {
         Row: {

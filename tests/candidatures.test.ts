@@ -44,6 +44,9 @@ describe("candidatures : fiche et journal", async () => {
     refusal_criteria: ["lore"],
     refusal_comment: "Relis le lore.",
     decided_at: "2026-10-04 10:00:00+00",
+    whitelist_revoked_at: null,
+    whitelist_revoked_by_id: null,
+    whitelist_revoke_reason: null,
     created_at: "2026-10-01 10:00:00+00",
     updated_at: "2026-10-04 10:00:00+00",
   } satisfies Application;
@@ -59,6 +62,13 @@ describe("candidatures : fiche et journal", async () => {
     expect(fields.Documents).toContain("[Background](https://docs.example/bg%281%29)");
     expect(fields.Documents).toContain("Le lead d'une créature (Sirènes)");
     expect(fields.Refus).toBe("• Non-respect du lore\nRelis le lore.");
+  });
+
+  it("indique une whitelist retirée, avec son auteur et sa raison", () => {
+    const revoked = { ...application, status: "whitelistee" as const, whitelist_revoked_at: "2026-10-10 10:00:00+00", whitelist_revoked_by_id: "900000000000000003", whitelist_revoke_reason: "Blacklist" };
+    const candidature = ficheEmbed(settings, profile, revoked).toJSON().fields?.find(field => field.name === "Candidature")?.value;
+    expect(candidature).toContain("**Whitelist retirée** <t:");
+    expect(candidature).toContain("par <@900000000000000003> : Blacklist");
   });
 
   it("signale un joueur sans candidature ou parti du Discord", () => {
