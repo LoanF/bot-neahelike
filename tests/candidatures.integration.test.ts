@@ -23,8 +23,8 @@ describe.skipIf(!url)("candidatures et journal du site", async () => {
   setRegistry(new Registry(modules));
   const store = await import("@/config/store");
   const { latestApplication } = await import("@/modules/site/applications");
-  const { eventsAfter, relayJournal } = await import("@/modules/site/journal");
-  const { siteSettings } = await import("@/modules/site/settings");
+  const { eventsAfter, pgTime, relayJournal } = await import("@/modules/site/journal");
+  const { siteSettings, updateSiteSettings } = await import("@/modules/site/settings");
   const guild = { id: GUILD } as Guild;
 
   async function clean() {
@@ -71,7 +71,70 @@ describe.skipIf(!url)("candidatures et journal du site", async () => {
 
     // Aucun salon configuré : rien n'est envoyé mais le curseur avance.
     expect(await relayJournal(guild)).toBe(2);
-    expect(siteSettings(await store.getSettings(GUILD)).journal).toEqual({ at: pending[1]!.created_at, id: pending[1]!.id });
+    expect(siteSettings(await store.getSettings(GUILD)).journal).toMatchObject({ at: pending[1]!.created_at, id: pending[1]!.id });
     expect(await relayJournal(guild)).toBe(0);
+  });
+
+  /** Serveur factice dont le salon de logs staff reçoit (ou refuse) les messages. */
+  function staffGuild() {
+    const sent: string[] = [];
+    let failing = false;
+    const channel = {
+      isSendable: () => true,
+      send: async (payload: { embeds: { toJSON: () => { title?: string } }[] }) => {
+        if (failing) throw new Error("Discord indisponible");
+        sent.push(payload.embeds[0]!.toJSON().title ?? "");
+      },
+    };
+    const fake = { id: GUILD, channels: { fetch: async () => channel } } as unknown as Guild;
+    return { guild: fake, sent, fail: (value: boolean) => void (failing = value) };
+  }
+
+  async function withStaffChannel() {
+    await relayJournal(guild);
+    await updateSiteSettings(await store.getSettings(GUILD), { salonLogs: "600000000000000001" });
+  }
+
+  it("n'avance pas le curseur si le salon de logs staff refuse l'envoi : l'événement est retenté", async () => {
+    await withStaffChannel();
+    const staff = staffGuild();
+    await sql()`insert into events (type, subject_id) values ('candidature.envoyee', ${USER})`;
+    await sql()`insert into events (type, subject_id) values ('entretien.valide', ${USER})`;
+    staff.fail(true);
+    expect(await relayJournal(staff.guild)).toBe(0);
+    expect(staff.sent).toEqual([]);
+    staff.fail(false);
+    expect(await relayJournal(staff.guild)).toBe(2);
+    expect(staff.sent).toEqual(["📨 Nouvelle candidature", "🏛️ Entretien validé"]);
+    expect(await relayJournal(staff.guild)).toBe(0);
+  });
+
+  it("relaie une fois un événement validé en retard, antérieur au curseur, et la blacklist", async () => {
+    await withStaffChannel();
+    const staff = staffGuild();
+    await sql()`insert into events (type, subject_id, data) values ('compte.blacklist', ${USER}, ${sql().json({ raison: "Triche" })})`;
+    expect(await relayJournal(staff.guild)).toBe(1);
+    // Écrit « avant » le dernier événement relayé, mais visible seulement maintenant.
+    await sql()`insert into events (type, subject_id, created_at) values ('candidature.validee', ${USER}, now() - interval '30 seconds')`;
+    expect(await relayJournal(staff.guild)).toBe(1);
+    expect(await relayJournal(staff.guild)).toBe(0);
+    expect(staff.sent).toEqual(["⛔ Joueur blacklisté", "✅ Candidature validée"]);
+  });
+
+  it("un ancien curseur sans liste des événements récents ne republie rien", async () => {
+    await withStaffChannel();
+    const staff = staffGuild();
+    await sql()`insert into events (type, subject_id) values ('candidature.envoyee', ${USER})`;
+    expect(await relayJournal(staff.guild)).toBe(1);
+    const { at, id } = siteSettings(await store.getSettings(GUILD)).journal!;
+    await updateSiteSettings(await store.getSettings(GUILD), { journal: { at, id } });
+    await relayJournal(staff.guild);
+    expect(staff.sent).toEqual(["📨 Nouvelle candidature"]);
+  });
+
+  it("lit les dates telles que Postgres les écrit", async () => {
+    const [row] = await sql()<{ at: string }[]>`select '2026-10-23 20:11:12.123456+00'::timestamptz::text as at`;
+    expect(pgTime(row!.at)).toBe(Date.parse("2026-10-23T20:11:12.123Z"));
+    expect(pgTime("2026-10-23 20:11:12+02")).toBe(Date.parse("2026-10-23T18:11:12Z"));
   });
 });

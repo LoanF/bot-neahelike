@@ -3,7 +3,13 @@ import { setModuleSettings, type GuildSettings } from "@/config/store";
 
 export const MODULE = "site";
 
-const cursor = z.object({ at: z.string(), id: z.string().regex(/^[0-9a-f-]{36}$/i) });
+const uuid = z.string().regex(/^[0-9a-f-]{36}$/i);
+
+/**
+ * Position de lecture du journal. `recent` : événements déjà traités dans la fenêtre de rattrapage,
+ * pour relire les dernières minutes sans rien republier (un événement peut être validé après un plus récent).
+ */
+const cursor = z.object({ at: z.string(), id: uuid, recent: z.array(z.object({ id: uuid, at: z.string() })).max(500).optional() });
 
 const schema = z.object({
   /** Salon où le staff suit le parcours des joueurs. */
