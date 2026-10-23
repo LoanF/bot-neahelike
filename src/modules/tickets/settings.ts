@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
+import { parseModuleSettings } from "@/config/module-settings";
 import { setModuleSettings, type GuildSettings } from "@/config/store";
 import { UserError } from "@/core/errors";
 
@@ -66,8 +67,7 @@ export const DEFAULT_CATEGORIES: TicketCategory[] = [
 
 /** Réglages des tickets ; une valeur invalide en base est ignorée plutôt que de bloquer le bot. */
 export function ticketSettings(settings: GuildSettings): TicketSettings {
-  const parsed = schema.safeParse(settings.modules.get(MODULE)?.settings ?? {});
-  const data = parsed.success ? parsed.data : {};
+  const data = parseModuleSettings(MODULE, schema, settings.modules.get(MODULE)?.settings);
   return { ...data, categories: data.categories ?? DEFAULT_CATEGORIES };
 }
 

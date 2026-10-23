@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseModuleSettings } from "@/config/module-settings";
 import { setModuleSettings, type GuildSettings } from "@/config/store";
 import { LOG_TYPES, type LogTypeId } from "./types";
 
@@ -15,9 +16,8 @@ export type LogSettings = { salons: Partial<Record<LogTypeId, string>> };
 
 /** Réglages des logs ; les types inconnus ou les valeurs invalides en base sont ignorés. */
 export function logSettings(settings: GuildSettings): LogSettings {
-  const parsed = schema.safeParse(settings.modules.get(MODULE)?.settings ?? {});
-  if (!parsed.success) return { salons: {} };
-  return { salons: Object.fromEntries(Object.entries(parsed.data.salons).filter(([type]) => known.has(type))) };
+  const data = parseModuleSettings(MODULE, schema, settings.modules.get(MODULE)?.settings);
+  return { salons: Object.fromEntries(Object.entries(data.salons).filter(([type]) => known.has(type))) };
 }
 
 /** Envoie les types donnés dans un salon (`null` : les désactive). */

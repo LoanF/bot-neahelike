@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseModuleSettings } from "@/config/module-settings";
 import { setModuleSettings, type GuildSettings } from "@/config/store";
 
 export const MODULE = "site";
@@ -24,8 +25,7 @@ export type SiteSettings = z.infer<typeof schema>;
 
 /** Réglages du module ; une valeur invalide en base est ignorée plutôt que de bloquer le bot. */
 export function siteSettings(settings: GuildSettings): SiteSettings {
-  const parsed = schema.safeParse(settings.modules.get(MODULE)?.settings ?? {});
-  return parsed.success ? parsed.data : {};
+  return parseModuleSettings(MODULE, schema, settings.modules.get(MODULE)?.settings);
 }
 
 export async function updateSiteSettings(settings: GuildSettings, patch: Partial<SiteSettings>) {
