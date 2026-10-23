@@ -93,7 +93,7 @@ Toutes sont décrites dans [`.env.example`](.env.example). Elles sont validées 
 | `DISCORD_GUILD_ID` | oui | ID du serveur Discord Néa Hélikè. Le bot ne sert que ce serveur |
 | `DATABASE_URL` | oui | Connexion PostgreSQL, **la même base que le site**. Avec Supabase : *Connection string › Transaction pooler* |
 | `SITE_URL` | oui | Adresse publique du site, sans `/` final (liens vers le portail et vers les fiches de l'espace équipe) |
-| `DISCORD_ROLE_ATTENTE_WL` | non | Rôle « attente de wl ». Sert à `/candidature statut` quand le joueur n'a pas de candidature sur le portail |
+| `DISCORD_ROLE_ATTENTE_WL` | non | Rôle « attente de wl ». Sert à `/candidature` quand le joueur n'a pas de candidature sur le portail |
 | `DISCORD_ROLE_WL` | non | Rôle whitelist « Magistrat (wl) ». Même usage, et compteur des citoyens |
 | `SUPABASE_PROJECT_ID` | non | Identifiant du projet Supabase, seulement pour `pnpm db:types` |
 | `LOG_LEVEL` | non | `trace`, `debug`, `info` (par défaut), `warn` ou `error` |
@@ -205,7 +205,7 @@ Le bot s'arrête proprement (`SIGINT` / `SIGTERM`) : il se déconnecte de Discor
 
 1. Valide les variables d'environnement.
 2. Vérifie que les tables indispensables existent en base. S'il en manque, il s'arrête avec la liste.
-3. Vérifie les tables propres à chaque module (tickets, giveaways, casier). Un module dont une table manque est **mis hors service**, avec un avertissement dans les logs. Les autres modules démarrent normalement.
+3. Vérifie les tables propres à chaque module (tickets, giveaways, casier, blacklist). Un module dont une table manque est **mis hors service**, avec un avertissement dans les logs. Les autres modules démarrent normalement.
 4. Se connecte à Discord, vérifie qu'il est bien sur le serveur `DISCORD_GUILD_ID`, enregistre ses commandes `/` et applique son profil (statut, activité).
 5. Lance chaque module : resynchronisation de la présence des comptes du site, relais du journal du site, nettoyage des vocaux temporaires, tâches régulières.
 
@@ -220,7 +220,7 @@ Une reconnexion à Discord après une coupure relance la resynchronisation de la
 1. `/config` › **Accès** : lier les rôles du staff aux accès (par défaut Admin ▸ Staff ▸ Joueur).
 2. `/config` › **Modules** : désactiver ce qui ne sert pas.
 3. `/logs` : choisir le salon de chaque type de log (ou d'une catégorie entière), puis « Envoyer un essai ».
-4. `/site salon-logs #salon` : salon où le staff suit les candidatures et les changements de rang du site.
+4. `/site` : salon où le staff suit les candidatures et les changements de rang du site (sélecteur du panneau).
 5. `/accueil` : salon de bienvenue, rôle « Novice (Non WL) » à l'arrivée, texte et rôle du règlement, puis publication du règlement.
 6. `/tickets` : catégorie Discord des tickets, salon des transcriptions, rôles de chaque catégorie, puis publication du panneau.
 7. `/serveur` : adresse du serveur FiveM et lien de connexion, publication du statut, salons compteurs, vocaux temporaires.
@@ -242,21 +242,23 @@ Toutes les commandes existent en `/` **et** avec le préfixe (`+` par défaut, r
 | `/aide [commande]` (alias `help`) | Les commandes accessibles, module par module, avec des exemples | Tout le monde |
 | `/ping` | Latence du bot | Tout le monde |
 | `/config` 🔒 | Panneau : général, modules, accès, commandes, profil du bot, messages | Gérer le serveur |
-| `/prefixe`, `/couleur` 🔒 | Préfixe des commandes, couleurs des embeds | Gérer le serveur |
-| `/module liste/activer/desactiver/acces` 🔒 | Activer, désactiver ou réserver un module | Gérer le serveur |
-| `/acces …` 🔒 | Créer, ordonner, renommer et lier aux rôles les accès du bot | Gérer le serveur |
-| `/permission voir/definir` 🔒 | Qui peut utiliser une commande | Gérer le serveur |
-| `/profil …` 🔒 | Pseudo, bio, avatar, bannière, statut et activité du bot | Gérer le serveur |
-| `/message liste/voir/definir/reinitialiser` 🔒 | Textes envoyés par le bot | Gérer le serveur |
+| `/prefixe`, `/couleur` 🔒 | Raccourci vers `/config` › Général : préfixe des commandes, couleurs des embeds | Gérer le serveur |
+| `/module` 🔒 | Raccourci vers `/config` › Modules : activer, désactiver ou réserver un module | Gérer le serveur |
+| `/acces` 🔒 | Raccourci vers `/config` › Accès : créer, ordonner, renommer et lier aux rôles les accès du bot | Gérer le serveur |
+| `/permission` 🔒 | Raccourci vers `/config` › Commandes : qui peut utiliser chaque commande | Gérer le serveur |
+| `/profil` 🔒 | Raccourci vers `/config` › Profil du bot : pseudo, bio, avatar, bannière, statut, activité | Gérer le serveur |
+| `/message` 🔒 | Raccourci vers `/config` › Messages : voir, modifier, essayer, rétablir les textes du bot | Gérer le serveur |
+
+Aucune de ces commandes n'a de sous-commande : chacune ouvre le panneau de configuration sur sa page, et tout se fait avec les boutons et les menus. Les clics du panneau suivent l'accès de `/config`.
 
 ### Lien avec le site
 
 | Commande | Rôle | Visible pour |
 |---|---|---|
-| `/candidature lien` | Lien vers le portail | Tout le monde |
-| `/candidature statut` | Où en est sa candidature (réponse privée) | Tout le monde |
+| `/candidature` | Où en est sa candidature (réponse privée), avec les boutons Ouvrir le portail, Actualiser et Comment ça marche | Tout le monde |
 | `/fiche <joueur>` | Compte du site, candidature, personnage, documents et décision d'un joueur, avec un lien vers sa fiche sur l'espace équipe (réponse privée) | Gérer les messages |
-| `/site voir/salon-logs/resync` 🔒 | Réglages du lien, salon de logs staff, resynchronisation de la présence | Gérer le serveur |
+| `/site` 🔒 | Panneau : salon de logs staff (sélecteur), rôles des rangs et du parcours, resynchronisation de la présence | Gérer le serveur |
+| `/blacklist` (alias `bl`) 🔒 | Panneau de la blacklist partagée avec le site : blacklister (membre ou ID, raison facultative), liste paginée, levée. Réservé aux rangs **admin** et **owner** du site | Bannir des membres |
 
 ### Accueil et vie du serveur
 
@@ -272,7 +274,7 @@ Toutes les commandes existent en `/` **et** avec le préfixe (`+` par défaut, r
 | Commande | Rôle | Visible pour |
 |---|---|---|
 | `/tickets` 🔒 | Panneau : catégories, rôles, questions, transcriptions, fermeture automatique, publication | Gérer le serveur |
-| `/ticket fermer/ajouter/retirer` | Gestion du ticket depuis son salon (équipe de la catégorie, ou auteur pour fermer) | Tout le monde |
+| `/ticket` | Dans le salon d'un ticket : état du ticket et ses boutons (prendre en charge, fermer, ajouter ou retirer un membre) ; équipe de la catégorie, ou auteur pour fermer | Tout le monde |
 | `/giveaway` (alias `gw`) | Panneau des giveaways : création (salon, rôle, durée, lot, gagnants, aperçu), suivi, tirage immédiat, nouveau tirage, annulation | Gérer le serveur |
 | `/embed` (alias `annonce`) | Créateur d'embeds avec aperçu en direct, Défaire et Refaire | Gérer les messages |
 
@@ -287,7 +289,7 @@ Toutes les commandes existent en `/` **et** avec le préfixe (`+` par défaut, r
 | `/ban <membre ou ID> [raison]` (alias `bannir`) | Bannissement définitif, même pour quelqu'un qui a quitté le serveur | Bannir des membres |
 | `/tempban <membre ou ID> <durée> [raison]` | Bannissement temporaire (un an au plus), levé automatiquement | Bannir des membres |
 | `/unban <ID> [raison]` (alias `debannir`) | Lève un bannissement | Bannir des membres |
-| `/casier voir <membre>` / `/casier retirer <numéro>` | Casier d'un membre ; retrait d'une sanction | Exclure temporairement |
+| `/casier [membre]` (alias `sanctions`) | Panneau du casier : choix du membre (ou ID saisi), sanctions, retrait d'une sanction depuis un menu | Exclure temporairement |
 | `/clear <nombre> [membre]` (alias `purge`) | Supprime les derniers messages (100 au plus, de moins de 14 jours) | Gérer les messages |
 | `/snipe` | Dernier message supprimé du salon (10 minutes) | Gérer les messages |
 | `/lock`, `/unlock` `[salon] [raison]` | Verrouiller ou rouvrir l'écriture pour @everyone | Gérer les salons |
@@ -352,21 +354,36 @@ Chaque module peut être désactivé dans `/config` › Modules, sauf **Généra
   - quand les rôles d'un membre changent, il demande au site de relire son rang (voir [Le bot et le site](#le-bot-et-le-site)) ;
   - au démarrage et après une coupure, il compare tous les comptes du site aux membres du serveur et corrige les écarts ;
   - il ne crée jamais de compte.
-- `/candidature statut` lit la **dernière candidature** du joueur :
+- `/candidature` lit la **dernière candidature** du joueur :
   - brouillon ;
   - envoyée, avec sa date ;
   - modification demandée, avec les étapes et le commentaire ;
   - entretien ;
   - whitelisté ;
-  - refusée, avec les motifs, le commentaire et la date à partir de laquelle il peut recandidater (3 mois, comme sur le site).
+  - refusée, avec les motifs, le commentaire et la date à partir de laquelle il peut recandidater (3 mois, comme sur le site) ;
+  - whitelist retirée par un admin : comme sur le portail, l'ancienne candidature ne compte plus et le parcours repart de zéro.
+
+  Boutons : **Ouvrir le portail**, **Actualiser** (relit le statut) et **Comment ça marche** (les étapes de la candidature).
 
   Le rôle « Magistrat (wl) » passe toujours en premier. Sans candidature, le bot se fie aux rôles du parcours.
-- `/fiche @joueur` : compte (rang, CGU, présence), candidature (statut, dates, relecteur), personnage, HRP, liens du background et du dossier, décision. Les notes de l'équipe restent sur le site.
-- **Logs staff** (`/site salon-logs`) :
+- `/fiche @joueur` : compte (rang, CGU, présence), candidature (statut, dates, relecteur, whitelist retirée), personnage, HRP, liens du background et du dossier, décision. Les notes de l'équipe restent sur le site.
+- **Logs staff** (`/site`) :
   - le bot lit le journal `events` du site toutes les 20 s ;
   - il publie les candidatures envoyées ou renvoyées, validées, à modifier, refusées (avec les motifs), les entretiens validés, les candidatures effacées et les changements de rang ;
   - chaque log a un bouton vers la fiche du joueur sur l'espace équipe ;
   - la position de lecture est gardée en base : au premier démarrage, l'historique n'est pas republié.
+
+### Blacklist (`/blacklist`)
+
+La blacklist est **partagée avec le site** (table `blacklist`, migration 0017 du site) : une personne blacklistée d'un côté l'est aussi de l'autre.
+
+- **Accès** : réservé aux rangs **admin** et **owner** du site (lus dans `users.rank`), revérifié à chaque clic. La commande demande aussi « Bannir des membres » par défaut.
+- **Blacklister** : sélecteur de membre, ou « Saisir un ID » pour quelqu'un qui n'est pas sur le serveur ; raison facultative dans un formulaire. Le bot inscrit l'ID (`source = 'bot'`), envoie un message privé au membre, puis le bannit. Il refuse soi-même, un owner, un membre au rôle plus haut et un ID déjà blacklisté. Si le bannissement échoue, la ligne reste et le panneau le signale.
+- **Liste** : 10 personnes par page, la plus récente d'abord : nom du compte du site (ou ID), raison, date, auteur, origine (site ou Discord).
+- **Lever** : menu limité aux personnes de la page affichée, puis confirmation. La ligne est retirée et le bannissement levé.
+- **La table fait foi** : un débannissement à la main ne lève pas la blacklist. Si la personne revient sur le serveur, le bot la bannit de nouveau.
+- **Journal du site** : `compte.blacklist` et `compte.blacklist_levee` (avec la raison), seulement si la personne a un compte sur le site (`events` pointe vers `users`).
+- Le retrait de la whitelist qui accompagne une blacklist posée **depuis le site** reste géré par le site.
 
 ### Accueil (`/accueil`)
 
@@ -413,7 +430,9 @@ Chaque module peut être désactivé dans `/config` › Modules, sauf **Généra
   - le membre reçoit un **message privé** (texte modifiable), envoyé **avant** l'expulsion ou le bannissement, sinon il ne le recevrait plus ;
   - la **hiérarchie des rôles** est respectée : on ne sanctionne ni soi-même, ni le propriétaire, ni le bot, ni un membre de rang égal ou supérieur au sien ou à celui du bot ;
   - la sanction n'est inscrite au casier **que si Discord l'a acceptée**. Si le casier est injoignable, un bannissement ou une exclusion qui vient d'être posé est annulé sur Discord.
-- **Casier** (`/casier`) :
+- **Casier** (`/casier`, panneau) :
+  - choix du membre dans un sélecteur, ou ID saisi pour quelqu'un qui a quitté le serveur ; `/casier @membre` ouvre directement son casier ;
+  - retrait d'une sanction depuis le menu « Retirer une sanction » (sanctions non levées seulement), avec la raison dans un formulaire ;
   - chaque sanction a un numéro (#12), un auteur, une raison, une durée et un état (en cours, terminée, levée) ;
   - rien n'est jamais supprimé : une sanction retirée est marquée levée, avec qui et pourquoi ;
   - retirer une sanction en cours la lève aussi sur Discord. Lever un bannissement demande la permission Bannir.
@@ -500,12 +519,13 @@ src/
 └── modules/                  Un dossier par module
     ├── index.ts              Liste des modules chargés, dans l'ordre de l'aide
     ├── general/              /aide, /ping, messages système
-    ├── config/               Panneau /config et commandes de réglage, profil du bot
+    ├── config/               Panneau /config et ses raccourcis (/acces, /module…), profil du bot
     ├── site/                 Présence, /candidature, /fiche, /site, relais du journal du site
     ├── accueil/              /accueil : bienvenue, autorôle, règlement, panneaux de rôles
     ├── serveur/              /serveur, /soutien, /statut : FiveM, compteurs, soutien, vocaux temporaires
     ├── tickets/              /tickets, /ticket : panneau public, salons, transcription, note
-    ├── moderation/           Sanctions, casier, levée des bannissements temporaires
+    ├── moderation/           Sanctions, casier (panneau), levée des bannissements temporaires
+    ├── blacklist/            Blacklist partagée avec le site (panneau /blacklist)
     ├── salons/               /clear, /lock, /hide, /slowmode, /nuke, /snipe
     ├── logs/                 /logs et écoute des événements du serveur
     ├── embeds/               /embed : brouillon, aperçu, publication
@@ -569,9 +589,10 @@ Tous les réglages des modules (accueil, vie du serveur, tickets, logs, lien ave
 | Table | Usage |
 |---|---|
 | `users` | **Écrit** : présence (`in_guild`), pseudo, avatar, et `roles_synced_at = null` pour demander au site de relire le rang. **Jamais** `rank`, ni les CGU, ni aucune suppression |
-| `events` | **Lu** pour les logs staff. **Écrit** : `discord.rejoint` et `discord.quitte` seulement |
-| `applications` | **Lu** : `/candidature statut`, `/fiche` |
-| `role_ranks` | **Lu** : `/site voir` (rôles qui donnent les rangs du site) |
+| `events` | **Lu** pour les logs staff. **Écrit** : `discord.rejoint`, `discord.quitte`, `compte.blacklist` et `compte.blacklist_levee` |
+| `applications` | **Lu** : `/candidature`, `/fiche` (y compris le retrait de whitelist) |
+| `blacklist` | **Lu et écrit** : `/blacklist` (ajout avec `source = 'bot'`, levée), nouveau bannissement d'un blacklisté qui revient |
+| `role_ranks` | **Lu** : `/site` (rôles qui donnent les rangs du site) |
 
 Toutes les tables ont la sécurité au niveau des lignes (RLS) activée sans règle : seul le propriétaire des tables (l'utilisateur de `DATABASE_URL`) y accède. Le bot doit donc se connecter **avec le même utilisateur que le site**.
 
@@ -606,7 +627,7 @@ Ce sont **deux programmes distincts** qui partagent **la même base PostgreSQL**
 |---|---|---|
 | Ce que c'est | Processus Discord connecté en permanence | Application web Next.js |
 | Discord | Passerelle : réagit aux événements du serveur ; commandes, panneaux | Appels REST ponctuels avec le token : lire un membre, donner un rôle, envoyer un MP |
-| Base | Tables `bot_*` ; présence dans `users` ; lit `events`, `applications`, `role_ranks` | Toutes les autres tables ; **possède le schéma et les migrations** |
+| Base | Tables `bot_*` ; présence dans `users` ; `blacklist` (partagée) ; lit `events`, `applications`, `role_ranks` | Toutes les autres tables ; **possède le schéma et les migrations** |
 
 Règles de cohabitation :
 
@@ -624,7 +645,7 @@ Règles de cohabitation :
 
 ## Modifier les textes
 
-Tous les textes envoyés par le bot se modifient **depuis Discord** : `/config` › Messages, ou `/message definir`. Sans texte personnalisé, le bot utilise le texte par défaut du code.
+Tous les textes envoyés par le bot se modifient **depuis Discord** : `/config` › Messages (ou `/message`). Sans texte personnalisé, le bot utilise le texte par défaut du code.
 
 | Clé | Texte |
 |---|---|
@@ -652,7 +673,7 @@ pnpm test
   - règles des accès, arguments en préfixe, durées, textes ;
   - panneaux et limites de Discord : 5 rangées, 25 options, identifiants de 100 caractères ;
   - embeds, logs, tickets, accueil, rôle soutien, giveaways, modération, informations.
-- **Tests d'intégration** (`*.integration.test.ts`) : stockage de la configuration, présence des comptes du site, candidatures et journal, tickets, giveaways, casier. Discord est simulé. Ils ne tournent que si `TEST_DATABASE_URL` est défini, vers une base **de test** où les migrations du site ont été appliquées, **jamais la production** :
+- **Tests d'intégration** (`*.integration.test.ts`) : stockage de la configuration, présence des comptes du site, candidatures et journal, tickets, giveaways, casier, blacklist. Discord est simulé. Ils ne tournent que si `TEST_DATABASE_URL` est défini, vers une base **de test** où les migrations du site ont été appliquées, **jamais la production** :
 
   ```bash
   # dans le dépôt du site : appliquer les migrations sur une base de test
@@ -683,15 +704,15 @@ pnpm test
 - [ ] **Application Discord** : intents privilégiés activés (Server Members, Message Content, Presence), bot invité avec les permissions (voir [Configurer l'application Discord](#configurer-lapplication-discord)), **rôle du bot placé au-dessus** des rôles qu'il gère et des rôles du parcours whitelist.
 - [ ] **Hébergement** : un processus Node 22 qui tourne en continu, redémarré automatiquement (PM2, systemd ou Docker), **une seule instance**.
 - [ ] **`.env`** : `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DATABASE_URL` (même base et même utilisateur que le site), `SITE_URL` (adresse de **production** du site), `DISCORD_ROLE_ATTENTE_WL`, `DISCORD_ROLE_WL`.
-- [ ] **Base** : migrations du site appliquées (au moins jusqu'à la `0016`, tables des giveaways et du casier). Au démarrage, aucun module ne doit être signalé « hors service ».
+- [ ] **Base** : migrations du site appliquées (au moins jusqu'à la `0017` : giveaways, casier et blacklist). Au démarrage, aucun module ne doit être signalé « hors service ».
 - [ ] **Serveur FiveM** (`/serveur` › Statut FiveM) :
   - remplacer les exemples par la vraie adresse `IP:port` (exemple : `51.75.12.34:30120`) et le vrai lien de connexion (exemple : `https://cfx.re/join/abc123`) ;
   - le port HTTP du serveur FiveM doit être joignable depuis l'hébergement du bot ;
   - publier ensuite le message de statut.
 - [ ] **Accès** (`/config` › Accès) : lier les rôles du staff ; vérifier qui voit quoi avec `/aide` depuis un compte de chaque rang.
-- [ ] **Logs** (`/logs`) et **logs staff** (`/site salon-logs`) : salons choisis, essai envoyé.
+- [ ] **Logs** (`/logs`) et **logs staff** (`/site`) : salons choisis, essai envoyé.
 - [ ] **Accueil** (`/accueil`) : salon de bienvenue, « Novice (Non WL) » en rôle à l'arrivée, règlement relu (le texte par défaut est provisoire) et publié.
 - [ ] **Tickets** (`/tickets`) : catégorie Discord, salon des transcriptions, rôles de chaque catégorie, panneau publié. Une catégorie sans rôle n'est visible que des administrateurs.
 - [ ] **Vie du serveur** (`/serveur`, `/soutien`) : compteurs, salon créateur des vocaux temporaires, rôle soutien et ses textes (lien d'invitation du Discord, nom du serveur…).
 - [ ] **Textes** (`/config` › Messages) : relire les textes par défaut (bienvenue, règlement, MP de sanction, tickets).
-- [ ] **Essai complet** sur le serveur : ouvrir et fermer un ticket, accepter le règlement, prendre un rôle, `/candidature statut`, un avertissement sur un compte de test puis `/casier`, un petit giveaway.
+- [ ] **Essai complet** sur le serveur : ouvrir et fermer un ticket, accepter le règlement, prendre un rôle, `/candidature`, un avertissement sur un compte de test puis `/casier`, un petit giveaway, `/blacklist` sur un compte de test puis sa levée.
