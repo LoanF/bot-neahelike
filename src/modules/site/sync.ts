@@ -29,7 +29,7 @@ export interface SyncResult {
 /**
  * Met à jour la présence et le profil d'un compte lié au site, et journalise `discord.rejoint` / `discord.quitte`
  * comme `syncMember` du site. Le rang n'est jamais écrit ici : le site le calcule seul (owners, rôles réglés sur le site).
- * `rolesChanged` (ou un départ) remet `roles_synced_at` à vide : le site relit le rang à la page suivante.
+ * Un changement de rôles, une arrivée ou un départ remet `roles_synced_at` à vide : le site relit le rang à la page suivante.
  * `member` null : absent du serveur. Sans compte sur le site, rien n'est créé.
  */
 export async function syncUser(userId: string, member: MemberSnapshot | null, { rolesChanged = false } = {}): Promise<SyncResult | null> {
