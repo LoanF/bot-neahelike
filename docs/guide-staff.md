@@ -20,6 +20,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
 - Les **administrateurs Discord** peuvent toujours tout utiliser.
 - Les panneaux et les réponses privées ne sont visibles que de la personne qui a lancé la commande. Avec le préfixe, le panneau s'affiche dans le salon, mais seul son auteur peut cliquer dessus.
+- Un panneau resté **10 minutes sans clic** s'efface tout seul (réglable dans `/config` › Général : 2, 5, 10, 15 minutes ou jamais). Chaque clic remet le compteur à zéro. Les messages publiés (règlement, tickets, statut, giveaways) ne s'effacent jamais.
 
 ## Premiers réglages
 
@@ -34,7 +35,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 
 | Section | À quoi elle sert |
 |---|---|
-| **Général** | Préfixe des commandes écrites, et les trois couleurs des messages du bot (avec leur rendu). |
+| **Général** | Préfixe des commandes écrites, effacement des panneaux restés sans clic, et les trois couleurs des messages du bot (avec leur rendu). |
 | **Modules** | Un bouton par module : vert = actif, gris = désactivé, cadenas = toujours actif. Le menu permet de réserver tout un module à un accès. |
 | **Accès** | L'échelle des droits du bot. Un accès placé plus haut a tous les droits de ceux du dessous. Chaque accès est lié à un ou plusieurs rôles. Boutons Monter, Descendre, Renommer et Supprimer. |
 | **Commandes** | Pour chaque commande, qui peut l'utiliser : par défaut (sa permission Discord), un accès et ceux au-dessus, ou tout le monde. |

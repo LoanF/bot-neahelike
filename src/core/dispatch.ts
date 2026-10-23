@@ -15,6 +15,7 @@ import { canUse, isModuleEnabled, requiredLabel, unavailableTables } from "./acc
 import { normalizeChoice, parseBoolean, parseInteger, parseSnowflake, tokenizeWithIndex, type Token } from "./args";
 import { usage, type ArgValue, type CommandDef, type OptionDef, type SubcommandDef } from "./command";
 import { ANYONE, parseCustomId, type PanelInteraction } from "./components";
+import { isTracked, panelTtlMs, TOKEN_LIFETIME_MS, touchPanel } from "./expiry";
 import { CommandContext } from "./context";
 import { failure } from "./embeds";
 import { UserError } from "./errors";
@@ -245,12 +246,31 @@ async function runComponent(interaction: PanelInteraction) {
     return;
   }
 
+  // Un clic qui met le panneau à jour donne un nouveau jeton pour l'effacer plus tard.
+  let updated = false;
+  if (interaction.isMessageComponent() || interaction.isFromMessage()) {
+    const target = interaction as { update: (...args: never[]) => Promise<unknown>; deferUpdate: (...args: never[]) => Promise<unknown> };
+    for (const method of ["update", "deferUpdate"] as const) {
+      const original = target[method].bind(interaction);
+      target[method] = (...params) => {
+        updated = true;
+        return original(...params);
+      };
+    }
+  }
+  const panelId = interaction.message?.id;
+
   try {
     await handler.handle(interaction, { settings, action, args });
   } catch (error) {
     if (!(error instanceof UserError)) throw error;
     if (interaction.replied || interaction.deferred) await interaction.followUp({ embeds: [failure(settings, error.message)], flags: MessageFlags.Ephemeral });
     else await deny(error.message);
+  } finally {
+    if (panelId && isTracked(panelId)) {
+      const ttl = panelTtlMs(await getSettings(interaction.guildId));
+      touchPanel(panelId, ttl, updated ? { close: () => interaction.deleteReply(), closeBy: interaction.createdTimestamp + TOKEN_LIFETIME_MS } : undefined);
+    }
   }
 }
 

@@ -12,6 +12,7 @@ import {
   setMessage,
   setModuleEnabled,
   setModuleLevel,
+  setModuleSettings,
   updateConfig,
   type GuildSettings,
 } from "@/config/store";
@@ -20,6 +21,7 @@ import { hexToInt, normalizeHexColor } from "@/core/args";
 import { customId, type ComponentHandler, type PanelInteraction } from "@/core/components";
 import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
+import { PANEL_TTL_CHOICES, panelTtlMs } from "@/core/expiry";
 import { UserError } from "@/core/errors";
 import { messageDefs, renderMessage } from "@/core/messages";
 import { button, choice, field, ICON, modal, row, status } from "@/core/panels";
@@ -59,6 +61,8 @@ const GUIDES: Record<string, string> = {
     "Chaque réglage est enregistré aussitôt. Les commandes existent en `/` et avec le préfixe (`+config`).",
   general:
     "**Préfixe** : le caractère placé devant les commandes écrites, par exemple `+aide`. Les commandes `/` fonctionnent toujours, quel que soit le préfixe.\n\n" +
+    "**Effacement des panneaux** : un panneau ouvert par une commande s'efface tout seul après ce délai sans clic (chaque clic remet le compteur à zéro). " +
+    "Les messages publiés (règlement, tickets, statut, giveaways) ne sont jamais effacés. Discord limite les panneaux privés à 15 minutes.\n\n" +
     "**Couleurs** : la barre colorée à gauche des messages du bot. La principale sert presque partout (logs compris), la neutre aux refus, l'accent à l'aide.",
   modules:
     "Un module regroupe une fonction du bot et ses commandes. Cliquez sur un module pour l'activer ou le désactiver : ses commandes ne répondent plus quand il est désactivé.\n\n" +
@@ -168,12 +172,17 @@ function general(view: PanelView): Payload {
     config.embed_color_dark === DEFAULT_COLORS.embed_color_dark &&
     config.embed_color_light === DEFAULT_COLORS.embed_color_light;
 
+  const ttlMinutes = panelTtlMs(view.settings) / 60000;
+
   return withNotice(view, {
     embeds: [
-      panel(view, `${ICON.general} Général`, "Le préfixe et les couleurs des messages du bot. Les trois encadrés ci-dessous montrent le rendu de chaque couleur.").addFields({
-        name: "Préfixe",
-        value: `\`${config.prefix}\` — exemple : \`${config.prefix}aide\`. Les commandes \`/\` restent toujours disponibles.`,
-      }),
+      panel(view, `${ICON.general} Général`, "Le préfixe, l'effacement des panneaux et les couleurs des messages du bot. Les trois encadrés ci-dessous montrent le rendu de chaque couleur.").addFields(
+        {
+          name: "Préfixe",
+          value: `\`${config.prefix}\` — exemple : \`${config.prefix}aide\`. Les commandes \`/\` restent toujours disponibles.`,
+        },
+        { name: "Effacement des panneaux", value: ttlMinutes ? `Après ${ttlMinutes} minutes sans clic` : "Jamais" },
+      ),
       sample(config.embed_color, "**Principale** — la plupart des messages"),
       sample(config.embed_color_dark, "**Neutre** — refus et confirmations de suppression"),
       sample(config.embed_color_light, "**Accent** — détails"),
@@ -183,6 +192,18 @@ function general(view: PanelView): Payload {
         button(id(view, "prefixe"), "Préfixe", { emoji: ICON.modifier }),
         button(id(view, "couleurs"), "Couleurs", { emoji: ICON.couleurs }),
         button(id(view, "couleurs-origine"), "Couleurs d'origine", { emoji: ICON.reinitialiser, style: ButtonStyle.Secondary, disabled: isDefault }),
+      ),
+      row(
+        choice(
+          id(view, "panneaux"),
+          PANEL_TTL_CHOICES.map(minutes => ({
+            label: minutes ? `Effacer après ${minutes} minutes sans clic` : "Ne jamais effacer les panneaux",
+            value: String(minutes),
+            emoji: "⏱️",
+            default: minutes === ttlMinutes,
+          })),
+          "Effacement des panneaux",
+        ),
       ),
       footer(view, "general"),
     ],
@@ -634,6 +655,13 @@ export const configPanel: ComponentHandler = {
         const form = submitted(interaction);
         await updateConfig(guildId, { embed_color: color(form, "main"), embed_color_dark: color(form, "dark"), embed_color_light: color(form, "light") });
         return show(interaction, "general", "Couleurs enregistrées.");
+      }
+      case "panneaux": {
+        const minutes = Number(selected(interaction));
+        if (!PANEL_TTL_CHOICES.includes(minutes as never)) throw new Error("Délai inconnu.");
+        const current = (settings.modules.get("config")?.settings ?? {}) as Record<string, unknown>;
+        await setModuleSettings(guildId, "config", { ...current, panneauxMinutes: minutes });
+        return show(interaction, "general", minutes ? `Les panneaux s'effacent après ${minutes} minutes sans clic.` : "Les panneaux ne s'effacent plus.");
       }
       case "couleurs-origine":
         await updateConfig(guildId, { ...DEFAULT_COLORS });
