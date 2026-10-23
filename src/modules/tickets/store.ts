@@ -37,11 +37,21 @@ export async function ticketByChannel(channelId: string): Promise<Ticket | undef
   return ticket;
 }
 
+/** Prend en charge un ticket ouvert qui ne l'est pas déjà : deux clics simultanés ne réussissent pas tous les deux. */
 export async function claimTicket(id: string, staffId: string): Promise<Ticket | undefined> {
   const [ticket] = await sql()<Ticket[]>`
-    update bot_tickets set claimed_by_id = ${staffId}, last_activity_at = now() where id = ${id} and status = 'ouvert' returning *
+    update bot_tickets set claimed_by_id = ${staffId}, last_activity_at = now()
+    where id = ${id} and status = 'ouvert' and claimed_by_id is null returning *
   `;
   return ticket;
+}
+
+/** Nombre de tickets ouverts dans une catégorie. */
+export async function countOpenInCategory(guildId: string, categoryId: string): Promise<number> {
+  const [row] = await sql()<{ count: number }[]>`
+    select count(*)::int as count from bot_tickets where guild_id = ${guildId} and category_id = ${categoryId} and status = 'ouvert'
+  `;
+  return row?.count ?? 0;
 }
 
 /** Ferme un ticket ouvert ; `undefined` s'il était déjà fermé (double clic, fermeture automatique simultanée). */

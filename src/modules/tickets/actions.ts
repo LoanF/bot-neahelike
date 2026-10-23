@@ -20,7 +20,7 @@ import { logger } from "@/logger";
 import { sendLog } from "@/modules/logs/events";
 import { ticketEvent } from "@/modules/logs/format";
 import { channelName, ticketSettings, type TicketCategory } from "./settings";
-import { claimTicket, closeTicket, findOpenTicket, inactiveTickets, openTicket, reopenTicket, type Answer, type Ticket } from "./store";
+import { claimTicket, closeTicket, findOpenTicket, inactiveTickets, openTicket, reopenTicket, ticketByChannel, type Answer, type Ticket } from "./store";
 import { renderTranscript, type TranscriptMessage } from "./transcript";
 
 export const PREFIX = "tkt";
@@ -157,7 +157,10 @@ export async function createTicket(member: GuildMember, category: TicketCategory
 
 /** Met à jour le message d'accueil (boutons, prise en charge) s'il est encore là. */
 async function refreshWelcome(channel: TextChannel, ticket: Ticket) {
-  const messages = await channel.messages.fetch({ limit: 20, after: "0" }).catch(() => null);
+  const messages = await channel.messages.fetch({ limit: 20, after: "0" }).catch(error => {
+    logger.warn({ err: error, ticket: ticket.id }, "Message d'accueil du ticket introuvable");
+    return null;
+  });
   const welcome = messages?.filter(message => message.author.id === channel.client.user.id && message.components.length > 0).last();
   if (!welcome) return;
   const settings = await getSettings(channel.guild.id);
@@ -165,13 +168,19 @@ async function refreshWelcome(channel: TextChannel, ticket: Ticket) {
   const opener = await channel.guild.members.fetch(ticket.opener_id).catch(() => null);
   // Fermé : les boutons Rouvrir et Supprimer sont sur le message de fermeture, pas sur l'accueil.
   const components = ticket.status === "ouvert" ? ticketButtons(ticket) : [];
-  await welcome.edit({ embeds: opener ? [welcomeEmbed(settings, ticket, category, opener)] : welcome.embeds, components }).catch(() => {});
+  await welcome
+    .edit({ embeds: opener ? [welcomeEmbed(settings, ticket, category, opener)] : welcome.embeds, components })
+    .catch(error => logger.warn({ err: error, ticket: ticket.id }, "Mise à jour du message d'accueil du ticket impossible"));
 }
 
 export async function claim(channel: TextChannel, ticket: Ticket, staff: GuildMember): Promise<Ticket> {
   if (ticket.claimed_by_id) throw new UserError(`Ce ticket est déjà pris en charge par <@${ticket.claimed_by_id}>.`);
   const updated = await claimTicket(ticket.id, staff.id);
-  if (!updated) throw new UserError("Ce ticket est fermé.");
+  if (!updated) {
+    const current = await ticketByChannel(channel.id);
+    if (current?.claimed_by_id) throw new UserError(`Ce ticket vient d'être pris en charge par <@${current.claimed_by_id}>.`);
+    throw new UserError("Ce ticket est fermé.");
+  }
   await refreshWelcome(channel, updated);
   await log(channel.guild, "Ticket pris en charge", updated, staff.id);
   return updated;
@@ -210,9 +219,10 @@ export async function close(channel: TextChannel, ticket: Ticket, by: { id: stri
   const opener = await guild.members.fetch(ticket.opener_id).catch(() => null);
   const closedAt = new Date();
 
+  // Sans transcription complète, on ne ferme pas : supprimer le salon ensuite effacerait la conversation.
   const messages = await collect(channel).catch(error => {
-    logger.warn({ err: error, channel: channel.id }, "Lecture des messages du ticket impossible");
-    return [];
+    logger.warn({ err: error, channel: channel.id }, "Lecture des messages du ticket impossible : fermeture annulée");
+    throw new UserError("Les messages du ticket n'ont pas pu être lus : il reste ouvert pour ne rien perdre. Réessayez dans un instant.");
   });
   const transcript = renderTranscript(
     {
@@ -233,7 +243,9 @@ export async function close(channel: TextChannel, ticket: Ticket, by: { id: stri
   openChannels.delete(channel.id);
 
   // Le membre garde la lecture du salon mais ne peut plus écrire.
-  await channel.permissionOverwrites.edit(ticket.opener_id, { SendMessages: false }, { reason: "Ticket fermé" }).catch(() => {});
+  await channel.permissionOverwrites
+    .edit(ticket.opener_id, { SendMessages: false }, { reason: "Ticket fermé" })
+    .catch(error => logger.warn({ err: error, ticket: ticket.id }, "Écriture de l'auteur non retirée à la fermeture du ticket"));
 
   await channel.send({
     embeds: [
@@ -289,7 +301,9 @@ export async function reopen(channel: TextChannel, ticket: Ticket, staff: GuildM
   const reopened = await reopenTicket(ticket.id);
   if (!reopened) throw new UserError("Ce ticket est déjà ouvert.");
   openChannels.add(channel.id);
-  await channel.permissionOverwrites.edit(ticket.opener_id, { ViewChannel: true, SendMessages: true }, { reason: "Ticket rouvert" }).catch(() => {});
+  await channel.permissionOverwrites
+    .edit(ticket.opener_id, { ViewChannel: true, SendMessages: true }, { reason: "Ticket rouvert" })
+    .catch(error => logger.warn({ err: error, ticket: ticket.id }, "Accès de l'auteur non rendu à la réouverture du ticket"));
   const settings = await getSettings(channel.guild.id);
   await channel.send({
     content: `<@${ticket.opener_id}>`,
