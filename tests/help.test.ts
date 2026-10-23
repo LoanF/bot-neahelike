@@ -43,7 +43,8 @@ describe("aide", () => {
 
   it("détaille un module avec des exemples en slash et en préfixe", () => {
     const content = text(renderHelp({ settings, member: member([]) }, { module: "site" }));
-    expect(content).toContain("/candidature statut");
+    expect(content).toContain("/candidature");
+    expect(content).not.toContain("/candidature statut");
     expect(content).toContain("+candidature");
   });
 

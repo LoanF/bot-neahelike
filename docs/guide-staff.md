@@ -13,7 +13,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
   | `/config`, `/prefixe`, `/couleur`, `/module`, `/acces`, `/permission`, `/profil`, `/message`, `/site`, `/accueil`, `/serveur`, `/soutien`, `/tickets`, `/logs`, `/giveaway`, `/nuke` | Gérer le serveur |
   | `/warn`, `/timeout`, `/untimeout`, `/casier` | Exclure temporairement des membres |
   | `/kick` | Expulser des membres |
-  | `/ban`, `/tempban`, `/unban` | Bannir des membres |
+  | `/ban`, `/tempban`, `/unban`, `/blacklist` (réservée en plus aux admins et owners du site) | Bannir des membres |
   | `/lock`, `/unlock`, `/hide`, `/unhide`, `/slowmode` | Gérer les salons |
   | `/embed`, `/fiche`, `/clear`, `/snipe` | Gérer les messages |
   | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut`, `/userinfo`, `/serverinfo`, `/pic`, `/banner` | Tout le monde |
@@ -26,7 +26,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 1. `/config`, puis **Accès** : liez vos rôles de staff aux accès.
 2. `/config`, puis **Modules** : coupez ce dont vous n'avez pas besoin.
 3. `/logs` : choisissez où partent les logs.
-4. `/site salon-logs #salon` : salon où le staff suit les candidatures (envoi, validation, modification demandée, refus, entretien) et les changements de rang du site.
+4. `/site`, puis le menu du salon : salon où le staff suit les candidatures (envoi, validation, modification demandée, refus, entretien) et les changements de rang du site.
 5. `/accueil` : salon de bienvenue, rôle « Novice (Non WL) » à l'arrivée, règlement à publier.
 6. `/config`, puis **Profil du bot** et **Messages** : pseudo, avatar, activité, textes.
 
@@ -40,6 +40,8 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
 | **Commandes** | Pour chaque commande, qui peut l'utiliser : par défaut (sa permission Discord), un accès et ceux au-dessus, ou tout le monde. |
 | **Profil du bot** | Pseudo, bio, avatar et bannière sur ce serveur ; statut et activité. Aperçu en direct. |
 | **Messages** | Les textes que le bot envoie, avec leurs variables (`{user}`, `{server}`…), un aperçu et un bouton pour s'envoyer un essai. |
+
+Raccourcis : `/prefixe` et `/couleur` ouvrent **Général**, `/module` **Modules**, `/acces` **Accès**, `/permission` **Commandes**, `/profil` **Profil du bot** et `/message` **Messages**. Rien à taper : tout se fait avec les boutons et les menus.
 
 ### Accès ou permission Discord ?
 
@@ -75,7 +77,12 @@ Si un accès ouvre une commande à des membres **sans** sa permission Discord, i
 Chaque commande n'apparaît que pour les membres qui ont la permission Discord correspondante (Exclure, Expulser, Bannir, Gérer les messages, Gérer les salons) ; un accès réglé dans `/config` peut la remplacer.
 
 - **Sanctions** : `/warn`, `/timeout membre duree` (28 jours au plus ; en préfixe, la durée s'écrit sans espace : `1h30`), `/untimeout`, `/kick`, `/ban` (aussi par identifiant, même si la personne a quitté le serveur), `/tempban membre duree` (débanni automatiquement), `/unban`. Le membre reçoit un message privé avant la sanction (texte modifiable : `/config` ▸ Messages). Personne ne peut sanctionner un membre de rang égal ou supérieur au sien, ni le propriétaire.
-- **Casier** : `/casier voir @membre` liste ses sanctions numérotées (#12), avec l'auteur, la raison et l'état. `/casier retirer 12` retire une sanction ; si elle est en cours, le bannissement ou l'exclusion est levé aussi. Retirer un bannissement demande la permission « Bannir des membres », et la hiérarchie des rôles s'applique comme pour sanctionner.
+- **Casier** : `/casier` ouvre un panneau. Choisissez le membre dans le menu (ou « Saisir un ID » pour quelqu'un qui a quitté le serveur) ; `/casier @membre` l'ouvre directement. Ses sanctions sont numérotées (#12), avec l'auteur, la raison et l'état. Le menu « Retirer une sanction » en retire une, avec la raison du retrait ; si elle est en cours, le bannissement ou l'exclusion est levé aussi. Retirer un bannissement demande la permission « Bannir des membres », et la hiérarchie des rôles s'applique comme pour sanctionner.
+- **Blacklist** : `/blacklist` ouvre un panneau, réservé aux admins et owners du site. La blacklist est la même que sur le site.
+  - **Blacklister** : choisissez le membre dans le menu (ou « Saisir un ID » pour quelqu'un qui n'est pas sur le serveur) et donnez une raison si vous le souhaitez. La personne reçoit un message privé, puis est bannie. Elle ne peut plus non plus utiliser le site, et sa whitelist est retirée.
+  - **Liste** : 10 personnes par page, avec la raison, la date, l'auteur et l'origine (site ou Discord).
+  - **Lever** : choisissez la personne dans le second menu, puis confirmez. Son bannissement est levé ; sur le site, elle devra recandidater si elle n'est plus whitelistée.
+  - Un débannissement à la main **ne lève pas** la blacklist : si la personne revient, le bot la bannit de nouveau. Passez toujours par « Lever ».
 - Les bannissements, expulsions et exclusions arrivent dans les logs par le journal d'audit ; les avertissements ont leur propre type de log, « Avertissements ».
 - **Salons** : `/clear nombre [membre]` (100 au plus, messages de moins de 14 jours, épinglés gardés), `/lock` et `/unlock`, `/hide` et `/unhide`, `/slowmode 10s` (0 pour retirer), `/nuke` pour recréer un salon vide après confirmation (refusé pour les salons réservés par Discord ; le nouveau salon a un autre identifiant, à choisir de nouveau dans les panneaux du bot s'il y servait), `/snipe` pour revoir le dernier message supprimé (gardé 10 minutes, en mémoire seulement).
 - **Informations** : `/userinfo`, `/serverinfo`, `/pic`, `/banner`, ouvertes à tous.
@@ -113,10 +120,12 @@ Le contenu d'un message supprimé n'est connu que si le bot l'a vu passer depuis
 | Bouton ou commande | Qui | Effet |
 |---|---|---|
 | 🙋 Prendre en charge | Équipe | Indique qui s'occupe du ticket |
-| ➕ Ajouter un membre, `/ticket ajouter`, `/ticket retirer` | Équipe | Donne ou retire l'accès au salon |
-| 🔒 Fermer, `/ticket fermer` | Équipe ou auteur | Demande une raison, enregistre la transcription, verrouille le salon pour l'auteur et lui envoie en MP une note de 1 à 5 |
+| ➕ Ajouter un membre, ➖ Retirer un membre | Équipe | Donne ou retire l'accès au salon (l'auteur ne peut pas être retiré) |
+| 🔒 Fermer | Équipe ou auteur | Demande une raison, enregistre la transcription, verrouille le salon pour l'auteur et lui envoie en MP une note de 1 à 5 |
 | 🔓 Rouvrir | Équipe | Rouvre le ticket fermé |
 | 🗑️ Supprimer le salon | Équipe | Supprime le salon d'un ticket fermé (la transcription reste) |
+
+Dans le salon d'un ticket, `/ticket` montre en privé l'état du ticket et ces mêmes boutons, pratique quand le message d'accueil est loin.
 
 « L'équipe », c'est les rôles de la catégorie, ainsi que les membres qui ont « Gérer les salons ». Le type de log **Tickets** (dans `/logs`) suit les ouvertures, prises en charge, fermetures et réouvertures.
 
@@ -131,8 +140,8 @@ Le brouillon est gardé deux heures. Relancez `/embed` pour le retrouver.
 
 ## Le lien avec le site
 
-- Le rang du site (joueur, recruteur, admin, owner) se règle sur le site. Le bot prévient le site dès que les rôles d'un membre changent ; chaque changement de rang arrive dans le salon de logs staff. `/site resync` revérifie qui est encore sur le serveur.
+- Le rang du site (joueur, recruteur, admin, owner) se règle sur le site. Le bot prévient le site dès que les rôles d'un membre changent ; chaque changement de rang arrive dans le salon de logs staff. `/site` ouvre le panneau du lien avec le site : salon de logs staff, rôles des rangs, et « Resynchroniser » pour revérifier qui est encore sur le serveur.
 - Les rôles du parcours (« attente de wl », « Magistrat (wl) ») sont donnés par le site.
-- Les joueurs suivent leur candidature avec `/candidature statut` : brouillon, envoyée, modification demandée (étapes et commentaire), entretien, refus (motifs et date de la prochaine candidature possible). La réponse n'est visible que d'eux. Les textes se modifient dans `/config` ▸ Messages.
-- `/fiche @joueur` affiche son compte, sa candidature, son personnage, ses documents et la décision, avec un bouton vers sa fiche sur l'espace staff du site. La réponse n'est visible que de vous. Les notes de l'équipe restent sur le site.
+- Les joueurs suivent leur candidature avec `/candidature` : brouillon, envoyée, modification demandée (étapes et commentaire), entretien, refus (motifs et date de la prochaine candidature possible), whitelist retirée (le parcours repart de zéro). La réponse n'est visible que d'eux, avec les boutons « Ouvrir le portail », « Actualiser » et « Comment ça marche ». Les textes se modifient dans `/config` ▸ Messages.
+- `/fiche @joueur` affiche son compte, sa candidature (et un éventuel retrait de whitelist), son personnage, ses documents et la décision, avec un bouton vers sa fiche sur l'espace staff du site. La réponse n'est visible que de vous. Les notes de l'équipe restent sur le site.
 - Les décisions prises sur le site arrivent dans le salon de logs staff en une vingtaine de secondes, avec un lien vers la fiche du joueur.

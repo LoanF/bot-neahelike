@@ -2,12 +2,11 @@ import { ChannelType, Events, type Client, type Guild, type TextChannel } from "
 import { getSettings } from "@/config/store";
 import { defineCommand, PERMISSION } from "@/core/command";
 import type { CommandContext } from "@/core/context";
-import { notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import type { BotModule } from "@/core/registry";
 import { env } from "@/env";
 import { logger } from "@/logger";
-import { addMembers, autoClose, categoryOf, close, isTicketStaff, openChannels, removeMember } from "./actions";
+import { autoClose, categoryOf, isTicketStaff, openChannels, ticketButtons, ticketSummary } from "./actions";
 import { renderTicketsPanel, ticketsPanel } from "./panel";
 import { MODULE } from "./settings";
 import { closeTicket, openTicketChannels, ticketByChannel, touchTicket } from "./store";
@@ -41,37 +40,14 @@ const tickets = defineCommand({
 
 const ticket = defineCommand({
   name: "ticket",
-  description: "Gère le ticket du salon : fermer, ajouter ou retirer un membre.",
+  description: "Dans un ticket : son état et ses boutons (prendre en charge, fermer, ajouter ou retirer un membre).",
   module: MODULE,
   defaultPermission: PERMISSION.tous,
-  subcommands: [
-    { name: "fermer", description: "Ferme ce ticket", options: [{ name: "raison", description: "Raison de la fermeture", type: "string", maxLength: 500, rest: true }] },
-    { name: "ajouter", description: "Ajoute un membre à ce ticket", options: [{ name: "membre", description: "Membre à ajouter", type: "user", required: true }] },
-    { name: "retirer", description: "Retire un membre de ce ticket", options: [{ name: "membre", description: "Membre à retirer", type: "user", required: true }] },
-  ],
   async run(ctx) {
-    const { ticket: current, channel } = await ticketHere(ctx);
+    const { ticket: current } = await ticketHere(ctx);
     const staff = isTicketStaff(ctx.member, categoryOf(ctx.settings, current));
-
-    if (ctx.subcommand === "fermer") {
-      if (!staff && current.opener_id !== ctx.user.id) throw new UserError("Seuls l'auteur du ticket et l'équipe peuvent le fermer.");
-      if (current.status !== "ouvert") throw new UserError("Ce ticket est déjà fermé.");
-      await ctx.defer({ private: true });
-      await close(channel, current, { id: ctx.user.id, tag: ctx.user.tag }, ctx.string("raison") ?? null);
-      await ctx.reply({ embeds: [notice(ctx.settings, "Ticket fermé. La transcription est enregistrée.")] }, { private: true });
-      return;
-    }
-
-    if (!staff) throw new UserError("Seule l'équipe qui gère cette catégorie peut faire cela.");
-    const user = ctx.userArg("membre");
-    if (!user) throw new UserError("Membre introuvable.");
-    if (ctx.subcommand === "ajouter") {
-      await addMembers(channel, [user.id], ctx.member);
-      await ctx.reply({ embeds: [notice(ctx.settings, `${user} ajouté au ticket.`)] }, { private: true });
-    } else {
-      await removeMember(channel, current, user.id, ctx.member);
-      await ctx.reply({ embeds: [notice(ctx.settings, `${user} retiré du ticket.`)] }, { private: true });
-    }
+    if (!staff && current.opener_id !== ctx.user.id) throw new UserError("Seuls l'auteur du ticket et l'équipe peuvent le gérer.");
+    await ctx.reply({ embeds: [ticketSummary(ctx.settings, current)], components: ticketButtons(current) }, { private: true });
   },
 });
 

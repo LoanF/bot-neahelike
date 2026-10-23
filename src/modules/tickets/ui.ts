@@ -9,7 +9,7 @@ import { renderMessage } from "@/core/messages";
 import { fetchPublished } from "@/core/published";
 import { button, field, ICON, modal, row } from "@/core/panels";
 import { logger } from "@/logger";
-import { addMembers, categoryOf, claim, close, createTicket, isTicketStaff, PREFIX, reopen, ticketNumber } from "./actions";
+import { addMembers, categoryOf, claim, close, createTicket, isTicketStaff, PREFIX, removeMember, reopen, ticketNumber } from "./actions";
 import { findCategory, MODULE, saveTicketSettings, ticketSettings } from "./settings";
 import { rateTicket, ticketByChannel, type Ticket } from "./store";
 
@@ -157,6 +157,32 @@ export const ticketHandler: ComponentHandler = {
         requireStaff(interaction, settings, ticket);
         await addMembers(channel, interaction.values, interaction.member);
         return interaction.update({ content: `${ICON.valider} ${interaction.values.length} membre(s) ajouté(s).`, components: [] });
+      }
+      case "retirer": {
+        const { ticket } = await currentTicket(interaction, arg);
+        requireStaff(interaction, settings, ticket);
+        return interaction.reply({
+          content: "Qui retirer de ce ticket ? (l'auteur du ticket ne peut pas l'être)",
+          components: [
+            row(
+              new UserSelectMenuBuilder()
+                .setCustomId(customId(PREFIX, owner, "retirer-ok", ticket.id))
+                .setPlaceholder("Choisir jusqu'à 5 membres")
+                .setMinValues(1)
+                .setMaxValues(5),
+            ),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+      case "retirer-ok": {
+        if (!interaction.isUserSelectMenu()) throw new Error("Menu de membres attendu.");
+        const { ticket, channel } = await currentTicket(interaction, arg);
+        requireStaff(interaction, settings, ticket);
+        const targets = interaction.values.filter(userId => userId !== ticket.opener_id);
+        for (const userId of targets) await removeMember(channel, ticket, userId, interaction.member);
+        const skipped = targets.length < interaction.values.length ? " L'auteur du ticket est resté : ferme plutôt le ticket." : "";
+        return interaction.update({ content: `${ICON.valider} ${targets.length} membre(s) retiré(s).${skipped}`, components: [] });
       }
       case "supprimer-salon": {
         const { ticket } = await currentTicket(interaction, arg);

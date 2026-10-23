@@ -92,3 +92,20 @@ describe("panneau de configuration", () => {
     }
   });
 });
+
+describe("raccourcis de configuration", () => {
+  const PAGES: Record<string, string> = { prefixe: "general", couleur: "general", module: "modules", acces: "acces", permission: "commandes", profil: "profil", message: "messages" };
+
+  it("ouvrent le panneau sur leur page, sans sous-commande ni option", async () => {
+    const { configuration } = await import("@/modules/config");
+    for (const [name, page] of Object.entries(PAGES)) {
+      const command = configuration.commands!.find(item => item.name === name)!;
+      expect(command.subcommands, name).toBeUndefined();
+      expect(command.options, name).toBeUndefined();
+      expect(command.protected).toBe(true);
+      let sent: unknown;
+      await command.run({ settings, guild, user: { id: "300000000000000001" }, reply: async (payload: unknown) => void (sent = payload) } as never);
+      expect(JSON.stringify(sent), name).toBe(JSON.stringify(renderPanel(view, page)));
+    }
+  });
+});

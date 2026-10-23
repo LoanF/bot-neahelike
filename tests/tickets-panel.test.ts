@@ -76,3 +76,40 @@ describe("panneau public des tickets", () => {
     expect(payload.components).toHaveLength(0);
   });
 });
+
+describe("/ticket", () => {
+  const base = {
+    answers: [],
+    category_id: "support",
+    category_label: "Support",
+    channel_id: "600000000000000001",
+    claimed_by_id: null,
+    close_reason: null,
+    closed_at: null,
+    closed_by_id: null,
+    created_at: "2026-10-20 10:00:00+00",
+    guild_id: "100000000000000001",
+    id: "00000000-0000-4000-8000-000000000001",
+    last_activity_at: "2026-10-20 10:00:00+00",
+    number: 7,
+    opener_id: "900000000000000001",
+    rating: null,
+    status: "ouvert" as const,
+    transcript: null,
+  };
+
+  it("ticket ouvert : prendre en charge, fermer, ajouter et retirer un membre", async () => {
+    const { ticketButtons, ticketSummary } = await import("@/modules/tickets/actions");
+    const buttons = ticketButtons(base)[0]!.toJSON().components.map(item => ("custom_id" in item ? item.custom_id : ""));
+    expect(buttons).toEqual(["prendre", "fermer", "ajouter", "retirer"].map(action => `tkt:*:${action}:${base.id}`));
+    const fields = Object.fromEntries((ticketSummary(settingsWith({}), { ...base, claimed_by_id: "300000000000000001" }).toJSON().fields ?? []).map(item => [item.name, item.value]));
+    expect(fields).toEqual({ État: "🟢 Ouvert", "Ouvert par": "<@900000000000000001>", "Pris en charge": "<@300000000000000001>" });
+  });
+
+  it("ticket fermé : rouvrir ou supprimer le salon", async () => {
+    const { ticketButtons, ticketSummary } = await import("@/modules/tickets/actions");
+    const labels = ticketButtons({ ...base, status: "ferme" })[0]!.toJSON().components.map(item => ("label" in item ? item.label : ""));
+    expect(labels).toEqual(["Rouvrir", "Supprimer le salon"]);
+    expect(ticketSummary(settingsWith({}), { ...base, status: "ferme" }).toJSON().title).toBe("🎫 Ticket #0007 · Support");
+  });
+});

@@ -41,6 +41,8 @@ export function statusKey(account: Account | undefined, application: Application
   const { DISCORD_ROLE_ATTENTE_WL, DISCORD_ROLE_WL } = env();
   const journey = journeyFromRoles(roles, { aspirant: DISCORD_ROLE_ATTENTE_WL, helikeen: DISCORD_ROLE_WL });
   if (journey === "whiteliste") return "candidature.statut.whiteliste";
+  // Whitelist retirée : comme sur le portail, l'ancienne candidature ne compte plus et le parcours repart de zéro.
+  if (application?.status === "whitelistee" && application.whitelist_revoked_at) application = undefined;
   if (application) {
     if (application.status === "refusee") {
       const until = reapplyDate(application);
