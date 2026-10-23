@@ -35,6 +35,9 @@ describe("statut de candidature", async () => {
     refusal_comment: null,
     decided_at: null,
     whitelist_revoked_at: null,
+    interview_slot_start: null,
+    interview_slot_end: null,
+    reapply_lifted_at: null,
     whitelist_revoked_by_id: null,
     whitelist_revoke_reason: null,
     created_at: "2026-10-01 10:00:00+00",
@@ -70,6 +73,30 @@ describe("statut de candidature", async () => {
     const revoked = application({ status: "whitelistee", whitelist_revoked_at: "2026-10-20 10:00:00+00", whitelist_revoked_by_id: "900000000000000002" });
     expect(statusKey(linked, revoked, [], now)).toBe("candidature.statut.compte-lie");
     expect(statusKey(linked, revoked, [ASPIRANT], now)).toBe("candidature.statut.attente-vocal");
+  });
+
+  it("laisse recandidater tout de suite quand un admin a levé le délai, comme le portail", () => {
+    const refused = application({ status: "refusee", decided_at: "2026-10-20 10:00:00+00" });
+    expect(statusKey(linked, refused, [], now)).toBe("candidature.statut.refusee");
+    expect(statusKey(linked, { ...refused, reapply_lifted_at: "2026-10-21 08:00:00+00" }, [], now)).toBe("candidature.statut.compte-lie");
+  });
+
+  it("garde le délai d'un ancien compte supprimé (reapply_locks)", () => {
+    const lock = new Date("2026-12-01T00:00:00Z");
+    expect(statusKey(linked, undefined, [], now, lock)).toBe("candidature.statut.delai");
+    expect(statusKey(linked, undefined, [], now, new Date("2026-10-01T00:00:00Z"))).toBe("candidature.statut.compte-lie");
+    expect(statusVars(undefined, "https://example.test", lock).date).toBe(`<t:${lock.getTime() / 1000}:D>`);
+    // Une candidature en cours passe avant le délai conservé.
+    expect(statusKey(linked, application({ status: "envoyee" }), [], now, lock)).toBe("candidature.statut.envoyee");
+  });
+
+  it("annonce la prochaine session de whitelist choisie par le recruteur", () => {
+    const slot = { interview_slot_start: "2026-10-25 19:00:00+00", interview_slot_end: "2026-10-25 21:00:00+00" };
+    const vars = statusVars(application({ status: "entretien", ...slot }), "https://example.test", null, now);
+    expect(vars.session).toBe(`<t:${Date.parse("2026-10-25T19:00:00Z") / 1000}:F> → <t:${Date.parse("2026-10-25T21:00:00Z") / 1000}:t> (<t:${Date.parse("2026-10-25T19:00:00Z") / 1000}:R>)`);
+    expect(statusVars(application({ status: "entretien" }), "https://example.test", null, now).session).toContain("annoncée par l'équipe");
+    // Session déjà passée : on n'affiche pas une date périmée.
+    expect(statusVars(application({ status: "entretien", ...slot }), "https://example.test", null, new Date("2026-10-26T00:00:00Z")).session).toContain("annoncée par l'équipe");
   });
 
   it("donne la priorité au rôle de citoyen", () => {

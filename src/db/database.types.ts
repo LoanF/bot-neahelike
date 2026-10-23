@@ -24,6 +24,9 @@ export type Database = {
           dossier: Json | null
           hrp: Json | null
           id: string
+          interview_slot_end: string | null
+          interview_slot_start: string | null
+          reapply_lifted_at: string | null
           refusal_comment: string | null
           refusal_criteria: string[] | null
           reviewer_id: string | null
@@ -46,6 +49,9 @@ export type Database = {
           dossier?: Json | null
           hrp?: Json | null
           id?: string
+          interview_slot_end?: string | null
+          interview_slot_start?: string | null
+          reapply_lifted_at?: string | null
           refusal_comment?: string | null
           refusal_criteria?: string[] | null
           reviewer_id?: string | null
@@ -68,6 +74,9 @@ export type Database = {
           dossier?: Json | null
           hrp?: Json | null
           id?: string
+          interview_slot_end?: string | null
+          interview_slot_start?: string | null
+          reapply_lifted_at?: string | null
           refusal_comment?: string | null
           refusal_criteria?: string[] | null
           reviewer_id?: string | null
@@ -811,6 +820,67 @@ export type Database = {
           },
         ]
       }
+      takeover_dossiers: {
+        Row: {
+          application_id: string | null
+          comment: string | null
+          content: Json | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          reviewer_id: string | null
+          status: Database["public"]["Enums"]["takeover_status"]
+          submitted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          application_id?: string | null
+          comment?: string | null
+          content?: Json | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          reviewer_id?: string | null
+          status?: Database["public"]["Enums"]["takeover_status"]
+          submitted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          application_id?: string | null
+          comment?: string | null
+          content?: Json | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          reviewer_id?: string | null
+          status?: Database["public"]["Enums"]["takeover_status"]
+          submitted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "takeover_dossiers_application_id_applications_id_fk"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "takeover_dossiers_reviewer_id_users_id_fk"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "takeover_dossiers_user_id_users_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar: string | null
@@ -859,6 +929,70 @@ export type Database = {
         }
         Relationships: []
       }
+      wipe_requests: {
+        Row: {
+          background: Json | null
+          comment: string | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          invited_by_id: string | null
+          reviewer_id: string | null
+          rp: Json | null
+          status: Database["public"]["Enums"]["wipe_status"]
+          submitted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          background?: Json | null
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          invited_by_id?: string | null
+          reviewer_id?: string | null
+          rp?: Json | null
+          status?: Database["public"]["Enums"]["wipe_status"]
+          submitted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          background?: Json | null
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          invited_by_id?: string | null
+          reviewer_id?: string | null
+          rp?: Json | null
+          status?: Database["public"]["Enums"]["wipe_status"]
+          submitted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wipe_requests_invited_by_id_users_id_fk"
+            columns: ["invited_by_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wipe_requests_reviewer_id_users_id_fk"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wipe_requests_user_id_users_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -883,7 +1017,9 @@ export type Database = {
         | "exclusion"
         | "expulsion"
         | "bannissement"
+      takeover_status: "brouillon" | "envoye" | "accepte" | "refuse"
       ticket_status: "ouvert" | "ferme"
+      wipe_status: "ouverte" | "envoyee" | "acceptee" | "refusee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1029,7 +1165,9 @@ export const Constants = {
         "expulsion",
         "bannissement",
       ],
+      takeover_status: ["brouillon", "envoye", "accepte", "refuse"],
       ticket_status: ["ouvert", "ferme"],
+      wipe_status: ["ouverte", "envoyee", "acceptee", "refusee"],
     },
   },
 } as const
