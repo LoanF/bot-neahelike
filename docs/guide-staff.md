@@ -14,7 +14,7 @@ Chaque panneau a un bouton **❓ Aide** qui rappelle ce qu'il faut savoir sur la
   | `/warn`, `/timeout`, `/untimeout`, `/casier` | Exclure temporairement des membres |
   | `/kick` | Expulser des membres |
   | `/ban`, `/tempban`, `/unban`, `/blacklist` (réservée en plus aux admins et owners du site) | Bannir des membres |
-  | `/lock`, `/unlock`, `/hide`, `/unhide`, `/slowmode` | Gérer les salons |
+  | `/salon`, `/lock`, `/unlock`, `/hide`, `/unhide`, `/slowmode` | Gérer les salons |
   | `/embed`, `/fiche`, `/clear`, `/snipe` | Gérer les messages |
   | `/aide`, `/ping`, `/candidature`, `/ticket`, `/statut`, `/userinfo`, `/serverinfo`, `/pic`, `/banner` | Tout le monde |
 
@@ -84,7 +84,7 @@ Chaque commande n'apparaît que pour les membres qui ont la permission Discord c
   - **Lever** : choisissez la personne dans le second menu, puis confirmez. Son bannissement est levé ; sur le site, elle devra recandidater si elle n'est plus whitelistée.
   - Un débannissement à la main **ne lève pas** la blacklist : si la personne revient, le bot la bannit de nouveau. Passez toujours par « Lever ».
 - Les bannissements, expulsions et exclusions arrivent dans les logs par le journal d'audit ; les avertissements ont leur propre type de log, « Avertissements ».
-- **Salons** : `/clear nombre [membre]` (100 au plus, messages de moins de 14 jours, épinglés gardés), `/lock` et `/unlock`, `/hide` et `/unhide`, `/slowmode 10s` (0 pour retirer), `/nuke` pour recréer un salon vide après confirmation (refusé pour les salons réservés par Discord ; le nouveau salon a un autre identifiant, à choisir de nouveau dans les panneaux du bot s'il y servait), `/snipe` pour revoir le dernier message supprimé (gardé 10 minutes, en mémoire seulement).
+- **Salons** : `/salon` ouvre un panneau pour le salon où vous êtes (ou celui choisi dans le menu) : son état (verrouillé, caché, mode lent), et des boutons pour verrouiller ou déverrouiller, cacher ou montrer, régler le mode lent, supprimer des messages, revoir le dernier message supprimé et recréer le salon. Un bouton grisé vous est fermé. Les commandes existent aussi une par une : `/clear nombre [membre]` (100 au plus, messages de moins de 14 jours, épinglés gardés), `/lock` et `/unlock`, `/hide` et `/unhide`, `/slowmode 10s` (0 pour retirer), `/nuke` pour recréer un salon vide après confirmation (refusé pour les salons réservés par Discord ; le nouveau salon a un autre identifiant, à choisir de nouveau dans les panneaux du bot s'il y servait), `/snipe` pour revoir le dernier message supprimé (gardé 10 minutes, en mémoire seulement).
 - **Informations** : `/userinfo`, `/serverinfo`, `/pic`, `/banner`, ouvertes à tous.
 
 ## /logs : les logs du serveur

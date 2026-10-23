@@ -1,59 +1,51 @@
-import { ButtonStyle, ChannelType, Events, MessageFlags, PermissionFlagsBits, type ButtonInteraction, type Client, type Guild, type GuildBasedChannel, type NewsChannel, type TextChannel } from "discord.js";
+import { ChannelType, Events, MessageFlags, type ButtonInteraction, type Client, type GuildBasedChannel, type NewsChannel, type TextChannel } from "discord.js";
 import type { GuildSettings } from "@/config/store";
 import { getSettings } from "@/config/store";
 import { isModuleEnabled } from "@/core/access";
 import { defineCommand, PERMISSION, type OptionDef } from "@/core/command";
-import { customId, type ComponentHandler } from "@/core/components";
+import type { ComponentHandler } from "@/core/components";
 import type { CommandContext } from "@/core/context";
 import { formatDuration } from "@/core/duration";
-import { embed, notice } from "@/core/embeds";
+import { notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
-import { button, ICON, row } from "@/core/panels";
+import { ICON } from "@/core/panels";
 import type { BotModule } from "@/core/registry";
 import { env } from "@/env";
 import { logger } from "@/logger";
-import { deletable, MAX_CLEAR, MODULE, parseSlowmode, SnipeStore } from "./logic";
+import { clearMessages, isProtectedChannel, LOCK_MESSAGES, manageableChannel, nukeConfirmation, NUKE_PREFIX, nuking, setEveryone, snipeEmbed, snipes } from "./actions";
+import { MAX_CLEAR, MODULE, parseSlowmode } from "./logic";
+import { accessOf, salonPanel, salonView } from "./panel";
 
-const snipes = new SnipeStore();
-/** Salons en cours de recréation : un double clic ne crée pas deux copies. */
-const nuking = new Set<string>();
-
-/** Salons que Discord réserve (règles, mises à jour de la communauté, alertes, messages système, widget) : jamais recréés. */
-export function isProtectedChannel(guild: Pick<Guild, "rulesChannelId" | "publicUpdatesChannelId" | "safetyAlertsChannelId" | "systemChannelId" | "widgetChannelId">, channelId: string) {
-  return [guild.rulesChannelId, guild.publicUpdatesChannelId, guild.safetyAlertsChannelId, guild.systemChannelId, guild.widgetChannelId].includes(channelId);
-}
-const NUKE_PREFIX = "nuk";
+export { isProtectedChannel } from "./actions";
 
 const channelOption: OptionDef = { name: "salon", description: "Salon (par défaut : celui-ci)", type: "channel" };
 const reasonOption: OptionDef = { name: "raison", description: "Raison (journal d'audit)", type: "string", maxLength: 300, rest: true };
 
 /** Salon textuel visé : l'option, sinon celui de la commande. */
-function textChannel(ctx: CommandContext): TextChannel {
-  const channel = (ctx.channelArg("salon") ?? ctx.channel) as GuildBasedChannel | null;
-  if (channel?.type !== ChannelType.GuildText && channel?.type !== ChannelType.GuildAnnouncement) throw new UserError("Choisissez un salon textuel.");
-  const me = ctx.guild.members.me;
-  // Modifier les permissions d'un salon demande aussi « Gérer les permissions » (Gérer les rôles) sur ce salon.
-  if (!me || !channel.permissionsFor(me).has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageRoles])) {
-    throw new UserError(`Le bot doit pouvoir gérer le salon ${channel} et ses permissions.`);
-  }
-  return channel as TextChannel;
-}
+const textChannel = (ctx: CommandContext) => manageableChannel(ctx.guild, (ctx.channelArg("salon") ?? ctx.channel) as GuildBasedChannel | null);
 
-const audit = (ctx: CommandContext) => `${ctx.string("raison")?.trim() || "Sans raison"} (par ${ctx.user.tag})`.slice(0, 512);
+const audit = (ctx: CommandContext) => `${ctx.string("raison")?.trim() || "Sans raison"} (par ${ctx.user.tag})`;
 
-/** Verrouiller (écriture) ou cacher (lecture) un salon pour @everyone ; `null` rend la main aux permissions de la catégorie. */
-async function setEveryone(ctx: CommandContext, permission: "SendMessages" | "ViewChannel", allow: false | null, message: string) {
+async function everyone(ctx: CommandContext, permission: "SendMessages" | "ViewChannel", allow: false | null, message: string) {
   const channel = textChannel(ctx);
   await ctx.defer({ private: true });
-  // Cacher un salon à @everyone le cache aussi au bot s'il n'a pas d'autorisation propre : il la reçoit d'abord, pour pouvoir le rendre visible ensuite.
-  if (permission === "ViewChannel" && allow === false && ctx.guild.members.me) {
-    await channel.permissionOverwrites.edit(ctx.guild.members.me, { ViewChannel: true, ManageChannels: true, ManageRoles: true }, { reason: "Le bot garde l'accès au salon caché" });
-  }
-  const overwrite = permission === "SendMessages" ? { SendMessages: allow, SendMessagesInThreads: allow, CreatePublicThreads: allow, AddReactions: allow } : { ViewChannel: allow };
-  await channel.permissionOverwrites.edit(ctx.guild.roles.everyone, overwrite, { reason: audit(ctx) });
-  if (permission === "SendMessages") await channel.send({ embeds: [notice(ctx.settings, message)] }).catch(() => {});
+  await setEveryone(ctx.settings, channel, permission, allow, audit(ctx), message);
   await ctx.reply({ embeds: [notice(ctx.settings, `${channel} : ${message.charAt(0).toLowerCase()}${message.slice(1)}`)] }, { private: true });
 }
+
+/** Panneau qui regroupe les outils d'un salon. */
+const salon = defineCommand({
+  name: "salon",
+  aliases: ["salons", "channel"],
+  description: "Ouvre le panneau d'un salon : verrouiller, cacher, mode lent, supprimer des messages, dernier supprimé, recréer.",
+  module: MODULE,
+  defaultPermission: PERMISSION.salons,
+  options: [channelOption],
+  async run(ctx) {
+    const channel = textChannel(ctx);
+    await ctx.reply(salonView({ settings: ctx.settings, owner: ctx.user.id, allowed: accessOf(ctx.settings, ctx.member) }, channel), { private: true });
+  },
+});
 
 const clear = defineCommand({
   name: "clear",
@@ -67,21 +59,12 @@ const clear = defineCommand({
   ],
   async run(ctx) {
     const channel = ctx.channel;
-    if (!channel || !("bulkDelete" in channel)) throw new UserError("Cette commande s'utilise dans un salon textuel.");
-    const me = ctx.guild.members.me;
-    if (!me || !channel.permissionsFor(me).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages])) {
-      throw new UserError("Le bot doit pouvoir lire l'historique et gérer les messages de ce salon.");
-    }
+    if (channel?.type !== ChannelType.GuildText && channel?.type !== ChannelType.GuildAnnouncement) throw new UserError("Cette commande s'utilise dans un salon textuel.");
     await ctx.defer({ private: true });
-    const count = ctx.integer("nombre", true);
     const author = ctx.userArg("membre");
-    const fetched = await channel.messages.fetch({ limit: 100 });
     // En préfixe, la commande elle-même ne compte pas dans le nombre demandé.
-    const candidates = [...fetched.values()].filter(message => message.id !== ctx.message?.id);
-    const targets = deletable(candidates, count, author?.id);
-    if (targets.length === 0) throw new UserError("Aucun message récent à supprimer (Discord n'efface en masse que les messages de moins de 14 jours).");
-    const deleted = await channel.bulkDelete(targets, true);
-    await ctx.reply({ embeds: [notice(ctx.settings, `${deleted.size} message(s) supprimé(s)${author ? ` de ${author}` : ""}.`)] }, { private: true });
+    const deleted = await clearMessages(channel, ctx.integer("nombre", true), author?.id, ctx.message?.id);
+    await ctx.reply({ embeds: [notice(ctx.settings, `${deleted} message(s) supprimé(s)${author ? ` de ${author}` : ""}.`)] }, { private: true });
   },
 });
 
@@ -92,7 +75,7 @@ const lock = defineCommand({
   module: MODULE,
   defaultPermission: PERMISSION.salons,
   options: [channelOption, reasonOption],
-  run: ctx => setEveryone(ctx, "SendMessages", false, "🔒 Salon verrouillé par l'équipe."),
+  run: ctx => everyone(ctx, "SendMessages", false, LOCK_MESSAGES.lock),
 });
 
 const unlock = defineCommand({
@@ -102,7 +85,7 @@ const unlock = defineCommand({
   module: MODULE,
   defaultPermission: PERMISSION.salons,
   options: [channelOption, reasonOption],
-  run: ctx => setEveryone(ctx, "SendMessages", null, "🔓 Salon déverrouillé : l'écriture pour @everyone suit de nouveau la catégorie."),
+  run: ctx => everyone(ctx, "SendMessages", null, LOCK_MESSAGES.unlock),
 });
 
 const hide = defineCommand({
@@ -112,7 +95,7 @@ const hide = defineCommand({
   module: MODULE,
   defaultPermission: PERMISSION.salons,
   options: [channelOption, reasonOption],
-  run: ctx => setEveryone(ctx, "ViewChannel", false, "👁️ Salon caché à @everyone : seuls les rôles qui ont une autorisation propre à ce salon (et les administrateurs) le voient."),
+  run: ctx => everyone(ctx, "ViewChannel", false, LOCK_MESSAGES.hide),
 });
 
 const unhide = defineCommand({
@@ -122,7 +105,7 @@ const unhide = defineCommand({
   module: MODULE,
   defaultPermission: PERMISSION.salons,
   options: [channelOption, reasonOption],
-  run: ctx => setEveryone(ctx, "ViewChannel", null, "👁️ Salon de nouveau visible."),
+  run: ctx => everyone(ctx, "ViewChannel", null, LOCK_MESSAGES.unhide),
 });
 
 const slowmode = defineCommand({
@@ -151,20 +134,7 @@ const nuke = defineCommand({
   async run(ctx) {
     const channel = textChannel(ctx);
     if (isProtectedChannel(ctx.guild, channel.id)) throw new UserError(`${channel} est un salon réservé par Discord (règles, annonces de la communauté, messages système…) : il ne peut pas être recréé.`);
-    await ctx.reply(
-      {
-        content:
-          `${ICON.attention} **Recréer ${channel} ?** Tous ses messages seront perdus définitivement ; ses réglages et permissions sont gardés.\n` +
-          "Le nouveau salon aura un autre identifiant : s'il sert au bot (logs, bienvenue, statut, compteurs, tickets…), choisissez-le de nouveau dans le panneau concerné.",
-        components: [
-          row(
-            button(customId(NUKE_PREFIX, ctx.user.id, "ok", channel.id), "Recréer le salon", { emoji: "💥", style: ButtonStyle.Danger }),
-            button(customId(NUKE_PREFIX, ctx.user.id, "annuler"), "Annuler", { emoji: ICON.annuler, style: ButtonStyle.Secondary }),
-          ),
-        ],
-      },
-      { private: true },
-    );
+    await ctx.reply(nukeConfirmation(channel, ctx.user.id), { private: true });
   },
 });
 
@@ -210,13 +180,7 @@ const snipe = defineCommand({
   async run(ctx) {
     const item = ctx.channel ? snipes.get(ctx.channel.id) : undefined;
     if (!item) throw new UserError("Aucun message supprimé récemment dans ce salon.");
-    const result = embed(ctx.settings, "bronze")
-      .setAuthor({ name: item.authorTag, iconURL: item.avatarUrl })
-      .setDescription(item.content.slice(0, 4000) || "*Sans texte*")
-      .setFooter({ text: `Supprimé` })
-      .setTimestamp(item.deletedAt);
-    if (item.attachments.length) result.addFields({ name: "Pièces jointes", value: item.attachments.join("\n").slice(0, 1024) });
-    await ctx.reply({ embeds: [result] }, { private: true });
+    await ctx.reply({ embeds: [snipeEmbed(ctx.settings, item)] }, { private: true });
   },
 });
 
@@ -247,8 +211,8 @@ export const channelsModule: BotModule = {
   id: MODULE,
   label: "Outils de salon",
   icon: "🧹",
-  description: "Suppression de messages, verrouillage, salon caché, mode lent, recréation d'un salon et dernier message supprimé.",
-  commands: [clear, lock, unlock, hide, unhide, slowmode, nuke, snipe],
-  components: [nukeHandler],
+  description: "Panneau /salon et commandes : suppression de messages, verrouillage, salon caché, mode lent, recréation d'un salon et dernier message supprimé.",
+  commands: [salon, clear, lock, unlock, hide, unhide, slowmode, nuke, snipe],
+  components: [salonPanel, nukeHandler],
   setup,
 };
