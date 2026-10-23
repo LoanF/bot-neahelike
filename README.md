@@ -342,10 +342,15 @@ Chaque module peut être désactivé dans `/config` › Modules, sauf **Généra
 
 - `/aide` ne montre que les commandes que le membre peut utiliser, avec un menu par module et des exemples.
 - `/config` regroupe tous les réglages en panneau :
-  - **Général** : préfixe et les trois couleurs des embeds ;
+  - **Général** : préfixe, effacement des panneaux et les trois couleurs des embeds ;
   - **Modules**, **Accès**, **Commandes** ;
   - **Profil du bot** : pseudo, bio, avatar et bannière propres au serveur, statut, activité ;
   - **Messages** : chaque texte envoyé par le bot, ses variables, un aperçu et un essai.
+- **Effacement des panneaux** (`src/core/expiry.ts`) : un panneau ouvert par une commande s'efface après **10 minutes sans clic** par défaut. Le délai se règle dans `/config` › Général : 2, 5, 10 ou 15 minutes, ou jamais. Chaque clic remet le compteur à zéro.
+  - Un panneau privé (`/`) ne peut être effacé qu'avec le jeton de la dernière interaction, valable 15 minutes : le délai ne peut donc pas dépasser 15 minutes après le dernier clic qui a mis le panneau à jour.
+  - Un panneau ouvert au préfixe est un message du salon, effacé au délai réglé.
+  - Les messages publiés (règlement, panneau des tickets, statut FiveM, giveaways, embeds) ne sont jamais effacés.
+  - Les minuteurs vivent en mémoire : un panneau ouvert avant un redémarrage du bot n'est pas effacé.
 
 ### Lien avec le site
 

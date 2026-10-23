@@ -15,6 +15,7 @@ import {
 import type { GuildSettings } from "@/config/store";
 import { logger } from "@/logger";
 import type { ArgValue, CommandDef } from "./command";
+import { isPanel, panelTtlMs, TOKEN_LIFETIME_MS, trackPanel } from "./expiry";
 
 export interface Payload {
   content?: string;
@@ -132,15 +133,22 @@ export class CommandContext {
   async reply(payload: Payload | string, options: ReplyOptions = {}) {
     const body: Payload = typeof payload === "string" ? { content: payload } : payload;
 
+    const ttl = isPanel(body) ? panelTtlMs(this.settings) : 0;
+
     if (this.interaction) {
       const interaction = this.interaction;
+      let sent: Message;
       if (interaction.deferred && !interaction.replied) {
-        await interaction.editReply(body);
+        sent = await interaction.editReply(body);
       } else if (interaction.replied) {
-        await interaction.followUp({ ...body, ...(options.private && { flags: MessageFlags.Ephemeral }) });
+        sent = await interaction.followUp({ ...body, ...(options.private && { flags: MessageFlags.Ephemeral }) });
       } else {
         await interaction.reply({ ...body, ...(options.private && { flags: MessageFlags.Ephemeral }) });
+        if (!ttl) return;
+        sent = await interaction.fetchReply();
       }
+      // Panneau resté sans clic : effacé avec le jeton de la commande (15 minutes au plus).
+      if (ttl) trackPanel(sent.id, () => interaction.deleteReply(sent), interaction.createdTimestamp + TOKEN_LIFETIME_MS, ttl);
       return;
     }
 
@@ -148,7 +156,8 @@ export class CommandContext {
     const inChannel = () => message.reply({ ...body, allowedMentions: { repliedUser: false, parse: [] } });
 
     if (!options.private || body.components?.length) {
-      await inChannel();
+      const sent = await inChannel();
+      if (ttl) trackPanel(sent.id, () => sent.delete(), Number.POSITIVE_INFINITY, ttl);
       return;
     }
 
