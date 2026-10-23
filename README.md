@@ -290,6 +290,7 @@ Aucune de ces commandes n'a de sous-commande : chacune ouvre le panneau de confi
 | `/tempban <membre ou ID> <durée> [raison]` | Bannissement temporaire (un an au plus), levé automatiquement | Bannir des membres |
 | `/unban <ID> [raison]` (alias `debannir`) | Lève un bannissement | Bannir des membres |
 | `/casier [membre]` (alias `sanctions`) | Panneau du casier : choix du membre (ou ID saisi), sanctions, retrait d'une sanction depuis un menu | Exclure temporairement |
+| `/salon [salon]` (alias `salons`) | Panneau d'un salon : état pour @everyone, verrouiller, cacher, mode lent (menu), supprimer des messages, dernier message supprimé, recréer. Chaque bouton suit l'accès de sa commande | Gérer les salons |
 | `/clear <nombre> [membre]` (alias `purge`) | Supprime les derniers messages (100 au plus, de moins de 14 jours) | Gérer les messages |
 | `/snipe` | Dernier message supprimé du salon (10 minutes) | Gérer les messages |
 | `/lock`, `/unlock` `[salon] [raison]` | Verrouiller ou rouvrir l'écriture pour @everyone | Gérer les salons |
@@ -438,7 +439,7 @@ La blacklist est **partagée avec le site** (table `blacklist`, migration 0017 d
   - retirer une sanction en cours la lève aussi sur Discord. Lever un bannissement demande la permission Bannir.
 - **Bannissements temporaires** : levés automatiquement dans la minute qui suit leur échéance, sauf si un autre bannissement du membre est encore en vigueur.
 - **Logs** : bannissements, expulsions et exclusions arrivent dans les logs par le journal d'audit de Discord, avec l'auteur et la raison. Les avertissements ont leur propre type de log.
-- **Outils de salon** :
+- **Outils de salon** (`/salon` les regroupe dans un panneau ; les commandes restent disponibles) :
   - `/clear` : garde les messages épinglés ; Discord n'efface pas en masse les messages de plus de 14 jours ;
   - `/lock` et `/unlock` : agissent sur l'écriture de @everyone ;
   - `/hide` : donne d'abord au bot un accès propre au salon, pour qu'il puisse le rendre visible ensuite ;
@@ -526,7 +527,7 @@ src/
     ├── tickets/              /tickets, /ticket : panneau public, salons, transcription, note
     ├── moderation/           Sanctions, casier (panneau), levée des bannissements temporaires
     ├── blacklist/            Blacklist partagée avec le site (panneau /blacklist)
-    ├── salons/               /clear, /lock, /hide, /slowmode, /nuke, /snipe
+    ├── salons/               Panneau /salon, /clear, /lock, /hide, /slowmode, /nuke, /snipe
     ├── logs/                 /logs et écoute des événements du serveur
     ├── embeds/               /embed : brouillon, aperçu, publication
     ├── giveaways/            /giveaway : participation, tirage
