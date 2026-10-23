@@ -21,7 +21,7 @@ import { hexToInt, normalizeHexColor } from "@/core/args";
 import { customId, type ComponentHandler, type PanelInteraction } from "@/core/components";
 import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
-import { PANEL_TTL_CHOICES, panelTtlMs } from "@/core/expiry";
+import { configSettings, configSettingsSchema, PANEL_TTL_CHOICES, panelTtlMs } from "@/core/expiry";
 import { UserError } from "@/core/errors";
 import { messageDefs, renderMessage } from "@/core/messages";
 import { button, choice, field, ICON, modal, row, status } from "@/core/panels";
@@ -658,9 +658,9 @@ export const configPanel: ComponentHandler = {
       }
       case "panneaux": {
         const minutes = Number(selected(interaction));
-        if (!PANEL_TTL_CHOICES.includes(minutes as never)) throw new Error("Délai inconnu.");
-        const current = (settings.modules.get("config")?.settings ?? {}) as Record<string, unknown>;
-        await setModuleSettings(guildId, "config", { ...current, panneauxMinutes: minutes });
+        const next = configSettingsSchema.safeParse({ ...configSettings(settings), panneauxMinutes: minutes });
+        if (!next.success) throw new Error("Délai inconnu.");
+        await setModuleSettings(guildId, "config", next.data);
         return show(interaction, "general", minutes ? `Les panneaux s'effacent après ${minutes} minutes sans clic.` : "Les panneaux ne s'effacent plus.");
       }
       case "couleurs-origine":
