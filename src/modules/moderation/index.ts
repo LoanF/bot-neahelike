@@ -1,53 +1,24 @@
 import type { Guild, User } from "discord.js";
-import { getSettings, type GuildSettings } from "@/config/store";
+import { getSettings } from "@/config/store";
 import { isModuleEnabled } from "@/core/access";
 import { defineCommand, PERMISSION, type OptionDef } from "@/core/command";
 import type { CommandContext } from "@/core/context";
-import { embed, notice } from "@/core/embeds";
+import { notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import type { BotModule } from "@/core/registry";
 import { logger } from "@/logger";
-import { endTimeout, liftExpiredBans, removeSanction, sanction, targetMember, unban } from "./actions";
-import { cleanReason, durationSuffix, MODULE, parseTempban, parseTimeout, SANCTION_LABELS, sanctionState, type SanctionType } from "./logic";
-import { countSanctions, sanctionByNumber, sanctionsOf, type Sanction } from "./store";
+import { endTimeout, liftExpiredBans, sanction, targetMember, unban } from "./actions";
+import { cleanReason, durationSuffix, MODULE, parseTempban, parseTimeout, SANCTION_LABELS, type SanctionType } from "./logic";
+import { casierPanel, casierView, loadTarget } from "./casier";
+import type { Sanction } from "./store";
+
+export { casierEmbed, sanctionLine } from "./casier";
 
 /** Les bannissements temporaires échus sont levés dans la minute. */
 const UNBAN_EVERY_MS = 60 * 1000;
 
 const memberOption: OptionDef = { name: "membre", description: "Membre concerné", type: "user", required: true };
 const reasonOption: OptionDef = { name: "raison", description: "Raison (envoyée au membre et gardée dans son casier)", type: "string", maxLength: 500, rest: true };
-
-const STATE_LABELS = { levee: "levée", expiree: "terminée", active: "en cours", definitive: "" } as const;
-const time = (iso: string, style: "R" | "f" | "d" = "d") => `<t:${Math.floor(new Date(iso).getTime() / 1000)}:${style}>`;
-
-/** Ligne du casier : numéro, type, date, durée, auteur, raison et état. */
-export function sanctionLine(item: Sanction, now = new Date()): string {
-  const { label, emoji } = SANCTION_LABELS[item.type];
-  const duration = item.ends_at ? durationSuffix(new Date(item.ends_at).getTime() - new Date(item.created_at).getTime()) : "";
-  const state = STATE_LABELS[sanctionState(item, now)];
-  const head = `${emoji} **#${item.number} ${label}**${duration} · ${time(item.created_at)} · par <@${item.moderator_id}>${state ? ` · *${state}*` : ""}`;
-  return `${head}\n> ${item.reason.slice(0, 200).replace(/\n/g, " ")}`;
-}
-
-export function casierEmbed(settings: GuildSettings, user: Pick<User, "id" | "tag">, sanctions: Sanction[], counts: Record<SanctionType, number>) {
-  const summary = (Object.keys(SANCTION_LABELS) as SanctionType[]).map(type => `${SANCTION_LABELS[type].emoji} ${counts[type]}`).join(" · ");
-  const lines: string[] = [];
-  let length = 0;
-  for (const item of sanctions) {
-    const line = sanctionLine(item);
-    // Limite de la description d'un embed (4096) : les plus anciennes sanctions sont résumées.
-    if (length + line.length > 3800) {
-      lines.push(`*… et ${sanctions.length - lines.length} sanction(s) plus ancienne(s).*`);
-      break;
-    }
-    lines.push(line);
-    length += line.length + 2;
-  }
-  return embed(settings, "bronze")
-    .setTitle(`⚖️ Casier de ${user.tag}`)
-    .setDescription(lines.join("\n\n") || "*Casier vierge.*")
-    .setFooter({ text: `Sanctions en vigueur : ${summary}` });
-}
 
 function confirmation(ctx: CommandContext, item: Sanction, user: User, durationMs?: number | null) {
   const { label, emoji } = SANCTION_LABELS[item.type];
@@ -160,32 +131,14 @@ const unbanCommand = defineCommand({
 const casier = defineCommand({
   name: "casier",
   aliases: ["sanctions"],
-  description: "Casier de modération d'un membre, ou retrait d'une sanction par son numéro.",
+  description: "Ouvre le casier de modération : sanctions d'un membre et retrait d'une sanction.",
   module: MODULE,
   defaultPermission: PERMISSION.moderation,
-  subcommands: [
-    { name: "voir", description: "Sanctions d'un membre, de la plus récente à la plus ancienne", options: [{ ...memberOption, description: "Membre ou identifiant" }] },
-    {
-      name: "retirer",
-      description: "Retire une sanction (levée sur Discord si elle est en cours)",
-      options: [{ name: "numero", description: "Numéro de la sanction (#12)", type: "integer", required: true, minValue: 1 }, reasonOption],
-    },
-  ],
+  options: [{ name: "membre", description: "Membre ou identifiant (facultatif : sinon, choix dans le panneau)", type: "user" }],
   async run(ctx) {
-    if (ctx.subcommand === "voir") {
-      const user = required(ctx);
-      await ctx.defer({ private: true });
-      const [list, counts] = await Promise.all([sanctionsOf(ctx.guild.id, user.id), countSanctions(ctx.guild.id, user.id)]);
-      await ctx.reply({ embeds: [casierEmbed(ctx.settings, user, list, counts)] }, { private: true });
-      return;
-    }
-    const number = ctx.integer("numero", true);
-    const item = await sanctionByNumber(ctx.guild.id, number);
-    if (!item) throw new UserError(`Aucune sanction #${number} sur ce serveur.`);
+    const user = ctx.userArg("membre");
     await ctx.defer({ private: true });
-    const reason = cleanReason(ctx.string("raison"));
-    const revoked = await removeSanction(ctx.member, item, reason);
-    await ctx.reply({ embeds: [notice(ctx.settings, `Sanction **#${revoked.number}** (${SANCTION_LABELS[revoked.type].label.toLowerCase()}) de <@${revoked.user_id}> retirée.`)] }, { private: true });
+    await ctx.reply(casierView({ settings: ctx.settings, owner: ctx.user.id }, user ? await loadTarget(ctx.guild.id, user) : null), { private: true });
   },
 });
 
@@ -214,6 +167,7 @@ export const moderationModule: BotModule = {
   description: "Avertissements, exclusions, expulsions, bannissements (temporaires ou non) et casier des membres.",
   tables: ["bot_sanctions"],
   commands: [warn, timeout, untimeout, kick, ban, tempban, unbanCommand, casier],
+  components: [casierPanel],
   onReady,
   messages: [
     {
