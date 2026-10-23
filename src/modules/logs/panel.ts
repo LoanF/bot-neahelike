@@ -139,7 +139,7 @@ function typeView(view: LogsView, typeId: string): Payload {
 
 function typesOf(group: string): LogTypeId[] {
   if (group === "tout") return LOG_TYPES.map(type => type.id);
-  if (!(group in LOG_CATEGORIES)) throw new UserError("Cette catégorie n'existe pas.");
+  if (!Object.hasOwn(LOG_CATEGORIES, group)) throw new UserError("Cette catégorie n'existe pas.");
   return LOG_TYPES.filter(type => type.category === (group as LogCategory)).map(type => type.id);
 }
 

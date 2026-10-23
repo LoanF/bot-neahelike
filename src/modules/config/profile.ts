@@ -17,8 +17,6 @@ export const ACTIVITIES: Record<string, { label: string; type: ActivityType }> =
   participe: { label: "Participe à", type: ActivityType.Competing },
 };
 
-export const statusChoices = Object.entries(STATUSES).map(([value, status]) => ({ name: status.label, value }));
-export const activityChoices = Object.entries(ACTIVITIES).map(([value, activity]) => ({ name: activity.label, value }));
 
 /** Statut et activité du bot (communs à tous les serveurs). */
 export function applyPresence(client: Client<true>, config: GuildConfig) {

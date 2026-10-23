@@ -25,9 +25,14 @@ export async function fetchFivem(address: string): Promise<FivemStatus> {
   try {
     // Pas de redirection suivie : le bot n'interroge que l'adresse réglée.
     const response = await fetch(`http://${host}:${port}/dynamic.json`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), redirect: "error" });
-    if (!response.ok) return { online: false, players: 0, max: 0 };
+    if (!response.ok) {
+      logger.debug({ status: response.status, address }, "Serveur FiveM : réponse invalide, affiché hors ligne");
+      return { online: false, players: 0, max: 0 };
+    }
     return parseDynamic(await response.json());
-  } catch {
+  } catch (error) {
+    // Injoignable (arrêté, pare-feu, délai dépassé) : le statut affiche « hors ligne ».
+    logger.debug({ err: error, address }, "Serveur FiveM injoignable, affiché hors ligne");
     return { online: false, players: 0, max: 0 };
   }
 }
