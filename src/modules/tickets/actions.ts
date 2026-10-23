@@ -67,8 +67,21 @@ export function ticketButtons(ticket: Ticket) {
       button(id("prendre"), ticket.claimed_by_id ? "Pris en charge" : "Prendre en charge", { emoji: "🙋", disabled: Boolean(ticket.claimed_by_id) }),
       button(id("fermer"), "Fermer", { emoji: "🔒", style: ButtonStyle.Danger }),
       button(id("ajouter"), "Ajouter un membre", { emoji: ICON.ajouter, style: ButtonStyle.Secondary }),
+      button(id("retirer"), "Retirer un membre", { emoji: ICON.retirer, style: ButtonStyle.Secondary }),
     ),
   ];
+}
+
+/** Résumé privé du ticket pour `/ticket` : état, auteur, prise en charge. */
+export function ticketSummary(settings: GuildSettings, ticket: Ticket): EmbedBuilder {
+  return embed(settings, "parchemin")
+    .setTitle(`🎫 Ticket ${ticketNumber(ticket)} · ${ticket.category_label}`)
+    .addFields(
+      { name: "État", value: ticket.status === "ferme" ? "🔒 Fermé" : "🟢 Ouvert", inline: true },
+      { name: "Ouvert par", value: `<@${ticket.opener_id}>`, inline: true },
+      { name: "Pris en charge", value: ticket.claimed_by_id ? `<@${ticket.claimed_by_id}>` : "*Personne*", inline: true },
+    )
+    .setFooter({ text: "Les mêmes boutons se trouvent sur le message d'accueil du ticket." });
 }
 
 /** Message d'accueil du ticket : demande du membre, réponses au formulaire, prise en charge. */
