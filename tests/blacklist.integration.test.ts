@@ -170,6 +170,30 @@ describe.skipIf(!url)("blacklist en base", async () => {
     expect(application?.whitelist_revoked_by_id).toBeNull();
   });
 
+  it("n'inscrit rien si une écriture échoue en cours de route : la blacklist peut être refaite", async () => {
+    // Base de test uniquement : un déclencheur fait échouer l'événement du site pour ce joueur.
+    await sql()`
+      create or replace function test_refuse_blacklist_event() returns trigger language plpgsql as $$
+      begin
+        if new.type = 'compte.blacklist' and new.subject_id = '910000000000000002' then raise exception 'journal indisponible'; end if;
+        return new;
+      end $$
+    `;
+    await sql()`create trigger test_refuse_blacklist_event before insert on events for each row execute function test_refuse_blacklist_event()`;
+    try {
+      const { actor, bans } = fakeGuild();
+      await expect(blacklistUser(actor, PLAYER, "Triche")).rejects.toThrow("journal indisponible");
+      expect(await store.blacklistEntry(PLAYER)).toBeUndefined();
+      expect(bans.has(PLAYER)).toBe(false);
+    } finally {
+      await sql()`drop trigger test_refuse_blacklist_event on events`;
+      await sql()`drop function test_refuse_blacklist_event()`;
+    }
+    const { actor, bans } = fakeGuild();
+    await blacklistUser(actor, PLAYER, "Triche");
+    expect(bans.has(PLAYER)).toBe(true);
+  });
+
   it("garde la ligne et prévient si le bannissement échoue", async () => {
     const { actor } = fakeGuild({ banFails: true });
     const { warnings } = await blacklistUser(actor, PLAYER, null);
