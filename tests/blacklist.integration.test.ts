@@ -78,6 +78,7 @@ describe.skipIf(!url)("blacklist en base", async () => {
   async function reset() {
     await sql()`delete from blacklist where discord_id in ${sql()(IDS)}`;
     await sql()`delete from events where subject_id in ${sql()(IDS)}`;
+    await sql()`delete from applications where user_id in ${sql()(IDS)}`;
     await sql()`delete from users where id in ${sql()(IDS)}`;
     await sql()`delete from bot_modules where guild_id = ${GUILD}`;
     await sql()`delete from bot_guild_config where guild_id = ${GUILD}`;
@@ -132,6 +133,41 @@ describe.skipIf(!url)("blacklist en base", async () => {
     await expect(blacklistUser(actor, OWNER, null)).rejects.toThrow("Un owner ne peut pas être blacklisté");
     await expect(blacklistUser(actor, RECRUITER, null)).rejects.toThrow();
     expect(await store.blacklistEntry(RECRUITER)).toBeUndefined();
+  });
+
+  it("retire la whitelist encore active de la dernière candidature, comme le site", async () => {
+    await sql()`insert into applications (user_id, status, created_at) values (${PLAYER}, 'whitelistee', now())`;
+    const { actor } = fakeGuild();
+    await blacklistUser(actor, PLAYER, "Triche");
+    const [application] = await sql()`select whitelist_revoked_at, whitelist_revoke_reason, whitelist_revoked_by_id from applications where user_id = ${PLAYER}`;
+    expect(application).toMatchObject({ whitelist_revoke_reason: "Blacklist", whitelist_revoked_by_id: ADMIN });
+    expect(application?.whitelist_revoked_at).not.toBeNull();
+  });
+
+  it("ne touche ni une candidature non whitelistée, ni une whitelist déjà retirée", async () => {
+    await sql()`insert into applications (user_id, status, created_at) values (${PLAYER}, 'refusee', now())`;
+    await sql()`
+      insert into applications (user_id, status, created_at, whitelist_revoked_at, whitelist_revoke_reason)
+      values (${RECRUITER}, 'whitelistee', now(), '2026-10-01', 'Ancienne raison')
+    `;
+    const { actor } = fakeGuild();
+    await blacklistUser(actor, PLAYER, null);
+    expect(await store.revokeWhitelistForBlacklist(RECRUITER, ADMIN)).toBe(false);
+    const rows = await sql()`select user_id, whitelist_revoke_reason from applications where user_id in ${sql()([PLAYER, RECRUITER])} order by user_id`;
+    expect(rows.map(row => [row.user_id, row.whitelist_revoke_reason])).toEqual([
+      [PLAYER, null],
+      [RECRUITER, "Ancienne raison"],
+    ]);
+  });
+
+  it("ne vise que la dernière candidature, et laisse l'auteur vide sans compte", async () => {
+    await sql()`insert into applications (user_id, status, created_at) values (${PLAYER}, 'whitelistee', now() - interval '1 year')`;
+    await sql()`insert into applications (user_id, status, created_at) values (${PLAYER}, 'refusee', now())`;
+    expect(await store.revokeWhitelistForBlacklist(PLAYER, ADMIN)).toBe(false);
+    await sql()`update applications set created_at = now() - interval '2 years' where user_id = ${PLAYER} and status = 'refusee'`;
+    expect(await store.revokeWhitelistForBlacklist(PLAYER, ABSENT)).toBe(true);
+    const [application] = await sql()`select whitelist_revoked_by_id from applications where user_id = ${PLAYER} and status = 'whitelistee'`;
+    expect(application?.whitelist_revoked_by_id).toBeNull();
   });
 
   it("garde la ligne et prévient si le bannissement échoue", async () => {

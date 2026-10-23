@@ -4,7 +4,7 @@ import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { logger } from "@/logger";
 import { checkHierarchy, targetMember } from "@/modules/moderation/actions";
-import { addToBlacklist, blacklistEntry, logBlacklistEvent, removeFromBlacklist, siteRank, type BlacklistEntry } from "./store";
+import { addToBlacklist, blacklistEntry, logBlacklistEvent, removeFromBlacklist, revokeWhitelistForBlacklist, siteRank, type BlacklistEntry } from "./store";
 
 /** Comme sur le site : la blacklist est réservée aux rangs admin et owner (rang lu dans `users.rank`). */
 export async function requireAdmin(userId: string) {
@@ -31,6 +31,7 @@ export async function blacklistUser(actor: GuildMember, targetId: string, reason
 
   const entry = await addToBlacklist({ discordId: targetId, reason, createdById: actor.id });
   if (!entry) throw new UserError(`<@${targetId}> est déjà blacklisté.`);
+  await revokeWhitelistForBlacklist(targetId, actor.id);
   await logBlacklistEvent("compte.blacklist", targetId, actor.id, reason);
 
   const warnings: string[] = [];

@@ -383,7 +383,7 @@ La blacklist est **partagée avec le site** (table `blacklist`, migration 0017 d
 - **Lever** : menu limité aux personnes de la page affichée, puis confirmation. La ligne est retirée et le bannissement levé.
 - **La table fait foi** : un débannissement à la main ne lève pas la blacklist. Si la personne revient sur le serveur, le bot la bannit de nouveau.
 - **Journal du site** : `compte.blacklist` et `compte.blacklist_levee` (avec la raison), seulement si la personne a un compte sur le site (`events` pointe vers `users`).
-- Le retrait de la whitelist qui accompagne une blacklist posée **depuis le site** reste géré par le site.
+- **Whitelist retirée**, comme sur le site : si la dernière candidature est whitelistée, le bot y note le retrait (`whitelist_revoked_at`, raison `Blacklist`, auteur s'il a un compte). Après une levée, le joueur doit donc recandidater.
 
 ### Accueil (`/accueil`)
 
@@ -590,7 +590,7 @@ Tous les réglages des modules (accueil, vie du serveur, tickets, logs, lien ave
 |---|---|
 | `users` | **Écrit** : présence (`in_guild`), pseudo, avatar, et `roles_synced_at = null` pour demander au site de relire le rang. **Jamais** `rank`, ni les CGU, ni aucune suppression |
 | `events` | **Lu** pour les logs staff. **Écrit** : `discord.rejoint`, `discord.quitte`, `compte.blacklist` et `compte.blacklist_levee` |
-| `applications` | **Lu** : `/candidature`, `/fiche` (y compris le retrait de whitelist) |
+| `applications` | **Lu** : `/candidature`, `/fiche`. **Écrit** : seulement le retrait de whitelist (`whitelist_revoked_*`) quand `/blacklist` vise un joueur whitelisté |
 | `blacklist` | **Lu et écrit** : `/blacklist` (ajout avec `source = 'bot'`, levée), nouveau bannissement d'un blacklisté qui revient |
 | `role_ranks` | **Lu** : `/site` (rôles qui donnent les rangs du site) |
 

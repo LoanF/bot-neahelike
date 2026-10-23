@@ -61,3 +61,19 @@ export async function logBlacklistEvent(type: "compte.blacklist" | "compte.black
     where s.id = ${subjectId}
   `;
 }
+
+/**
+ * Comme le site : une blacklist retire la whitelist de la dernière candidature si elle est encore active,
+ * sinon une levée de blacklist rendrait une whitelist sans recandidater. L'auteur n'est noté que s'il a un compte.
+ */
+export async function revokeWhitelistForBlacklist(userId: string, actorId: string): Promise<boolean> {
+  const revoked = await sql()`
+    update applications set
+      whitelist_revoked_at = now(),
+      whitelist_revoke_reason = 'Blacklist',
+      whitelist_revoked_by_id = (select id from users where id = ${actorId})
+    where id = (select id from applications where user_id = ${userId} order by created_at desc limit 1)
+      and status = 'whitelistee' and whitelist_revoked_at is null
+  `;
+  return revoked.count > 0;
+}
