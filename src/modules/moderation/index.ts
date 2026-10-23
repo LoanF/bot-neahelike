@@ -130,7 +130,7 @@ const unbanCommand = defineCommand({
 
 const casier = defineCommand({
   name: "casier",
-  aliases: ["sanctions"],
+  slashOnly: true,
   description: "Ouvre le casier de modération : sanctions d'un membre et retrait d'une sanction.",
   module: MODULE,
   defaultPermission: PERMISSION.moderation,

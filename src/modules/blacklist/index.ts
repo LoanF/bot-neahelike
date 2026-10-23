@@ -11,7 +11,7 @@ import { blacklistPanel, openBlacklistPanel } from "./panel";
 
 const blacklist = defineCommand({
   name: "blacklist",
-  aliases: ["bl"],
+  slashOnly: true,
   description: "Ouvre le panneau de la blacklist partagée avec le site : blacklister, voir la liste, lever.",
   module: MODULE,
   defaultPermission: PERMISSION.bannissement,

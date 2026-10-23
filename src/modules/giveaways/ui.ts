@@ -83,17 +83,18 @@ export function eligible(guild: Pick<Guild, "members">, giveaway: Pick<Giveaway,
 }
 
 /**
- * Participants absents du cache : la liste complète des membres est chargée une fois (chargement partagé),
- * puis tenue à jour par l'intent « Server Members ». Un participant absent ensuite a quitté le serveur.
+ * Participants éligibles d'un giveaway. La liste complète des membres est chargée une fois (chargement partagé),
+ * puis tenue à jour par l'intent « Server Members » : un participant absent ensuite a quitté le serveur.
+ * Si elle n'a pas pu être chargée, on ne tire pas : des participants valides seraient écartés à tort.
  */
-export async function loadMembers(guild: Guild) {
-  await loadAllMembers(guild).catch(error => logger.warn({ err: error }, "Chargement des participants impossible"));
-}
-
-/** Participants éligibles d'un giveaway, membres chargés au besoin. */
 export async function eligibleEntries(guild: Guild, giveaway: Giveaway): Promise<string[]> {
   const entries = await entriesOf(giveaway.id);
-  await loadMembers(guild);
+  try {
+    await loadAllMembers(guild);
+  } catch (error) {
+    logger.warn({ err: error, giveaway: giveaway.id }, "Liste des membres indisponible : tirage reporté");
+    throw new UserError("La liste des membres n'a pas pu être chargée : le tirage est reporté. Réessayez dans un instant.");
+  }
   return eligible(guild, giveaway, entries);
 }
 
@@ -109,7 +110,7 @@ export async function drawGiveaway(guild: Guild, giveaway: Giveaway): Promise<bo
 export async function announce(guild: Guild, giveaway: Giveaway, winners: string[], reroll = false) {
   const settings = await getSettings(guild.id);
   const message = await fetchGiveawayMessage(guild, giveaway);
-  if (message) await message.edit(giveawayPayload(settings, giveaway, await countEntries(giveaway.id))).catch(() => {});
+  if (message) await message.edit(giveawayPayload(settings, giveaway, await countEntries(giveaway.id))).catch(error => logger.warn({ err: error, giveaway: giveaway.id }, "Mise à jour du giveaway impossible"));
   const channel = guild.channels.cache.get(giveaway.channel_id);
   if (!channel?.isSendable()) return;
   const text = winners.length

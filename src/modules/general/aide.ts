@@ -29,6 +29,7 @@ function examples(command: CommandDef, prefix: string): string {
   const lines = command.subcommands
     ? command.subcommands.map(sub => `\`${usage(command, "/", sub)}\` — ${sub.description}`)
     : [`\`${usage(command, "/")}\``];
+  if (command.slashOnly) return `${lines.join("\n")}\n-# Seulement en \`/\` : la réponse n'est visible que de toi.`;
   return `${lines.join("\n")}\n-# Aussi avec le préfixe : \`${usage(command, prefix)}\``;
 }
 

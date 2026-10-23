@@ -31,7 +31,10 @@ async function onReady(guild: Guild) {
     try {
       const settings = await getSettings(guild.id);
       if (!isModuleEnabled(settings, MODULE)) return;
-      for (const due of await dueGiveaways(guild.id)) await drawGiveaway(guild, due);
+      for (const due of await dueGiveaways(guild.id)) {
+        // Un tirage reporté (liste des membres indisponible) ne bloque pas les autres : il sera retenté au prochain passage.
+        await drawGiveaway(guild, due).catch(error => logger.warn({ err: error, giveaway: due.id }, "Tirage du giveaway reporté"));
+      }
     } catch (error) {
       logger.error({ err: error }, "Tirage des giveaways impossible");
     } finally {
