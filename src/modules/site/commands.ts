@@ -1,54 +1,24 @@
 import { ButtonBuilder, ButtonStyle } from "discord.js";
 import { defineCommand, PERMISSION } from "@/core/command";
-import { embed, notice } from "@/core/embeds";
 import { UserError } from "@/core/errors";
-import { renderMessage } from "@/core/messages";
 import { row } from "@/core/panels";
-import { sql } from "@/db";
-import { env } from "@/env";
-import { latestApplication, statusKey, statusVars, type Account } from "./applications";
-import { ficheEmbed, findProfile, profileUrl, roleRanks } from "./fiche";
-import { resync } from "./events";
-import { MODULE, siteSettings, updateSiteSettings } from "./settings";
+import { latestApplication } from "./applications";
+import { ficheEmbed, findProfile, profileUrl } from "./fiche";
+import { candidatureComponents, candidatureEmbed, renderSitePanel } from "./panel";
+import { MODULE } from "./settings";
 
-export function portalUrl() {
-  return `${env().SITE_URL}/connexion`;
-}
-
-function portalButton(label = "Ouvrir le portail") {
-  return row(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(portalUrl()).setLabel(label));
-}
+export { portalUrl } from "./panel";
 
 export const candidature = defineCommand({
   name: "candidature",
-  description: "Ta candidature à la whitelist de Néa Hélikè.",
+  description: "Où en est ta candidature à la whitelist, avec le lien du portail (réponse visible par toi seul).",
   module: MODULE,
   defaultPermission: PERMISSION.tous,
-  subcommands: [
-    { name: "lien", description: "Lien vers le portail pour déposer ta candidature" },
-    { name: "statut", description: "Où en est ta candidature (réponse visible par toi seul)" },
-  ],
   async run(ctx) {
-    const vars = { lien: portalUrl() };
-
-    if (ctx.subcommand === "lien") {
-      await ctx.reply(
-        { embeds: [notice(ctx.settings, renderMessage(ctx.settings, "candidature.lien", vars), "Portail de Néa Hélikè")], components: [portalButton()] },
-        { private: true },
-      );
-      return;
-    }
-
     await ctx.defer({ private: true });
-    const [account] = await sql()<Account[]>`select cgu_accepted_at, rank from users where id = ${ctx.user.id}`;
-    const application = account ? await latestApplication(ctx.user.id) : undefined;
-    const key = statusKey(account, application, ctx.member.roles.cache.keys());
-    const result = embed(ctx.settings)
-      .setTitle("Ta candidature")
-      .setDescription(renderMessage(ctx.settings, key, statusVars(application, vars.lien)))
-      .setFooter({ text: "Visible par toi seul" });
-    // Le bouton n'a pas sa place en MP (repli des commandes préfixe) : le lien figure déjà dans le texte.
-    await ctx.reply({ embeds: [result], ...(ctx.source === "slash" && key !== "candidature.statut.whiteliste" && { components: [portalButton()] }) }, { private: true });
+    const result = await candidatureEmbed(ctx.settings, ctx.user.id, ctx.member.roles.cache.keys());
+    // Pas de boutons en MP (repli des commandes préfixe) : le lien du portail figure déjà dans le texte.
+    await ctx.reply({ embeds: [result.embed], ...(ctx.source === "slash" && { components: candidatureComponents(ctx.user.id, result.whitelisted) }) }, { private: true });
   },
 });
 
@@ -77,70 +47,11 @@ export const fiche = defineCommand({
 
 export const site = defineCommand({
   name: "site",
-  description: "Lien entre le bot et le site : salon de logs staff, resynchronisation de la présence.",
+  description: "Ouvre le panneau du lien avec le site : salon de logs staff, rôles des rangs, resynchronisation.",
   module: MODULE,
   defaultPermission: PERMISSION.gestion,
   protected: true,
-  subcommands: [
-    { name: "voir", description: "Affiche les réglages du lien avec le site" },
-    {
-      name: "salon-logs",
-      description: "Salon où le staff suit le parcours des joueurs (vide pour le retirer)",
-      options: [{ name: "salon", description: "Salon textuel", type: "channel" }],
-    },
-    { name: "resync", description: "Resynchronise la présence sur le serveur de tous les comptes du site" },
-  ],
   async run(ctx) {
-    const { DISCORD_ROLE_ATTENTE_WL, DISCORD_ROLE_WL, SITE_URL } = env();
-    const roles = (ids: (string | undefined)[]) => ids.filter(Boolean).map(id => `<@&${id}>`).join(" ") || "*Non configuré*";
-
-    switch (ctx.subcommand) {
-      case "voir": {
-        const channelId = siteSettings(ctx.settings).salonLogs;
-        const ranks = await roleRanks();
-        await ctx.reply(
-          {
-            embeds: [
-              embed(ctx.settings)
-                .setTitle("Lien avec le site")
-                .setDescription("Les rangs du site (recruteur, admin, owner) se règlent sur le site ; le bot ne fait que les lire.")
-                .addFields(
-                  { name: "Site", value: SITE_URL },
-                  { name: "Salon de logs staff", value: channelId ? `<#${channelId}>` : "*Aucun*" },
-                  { name: "Rang admin", value: roles(ranks.admin), inline: true },
-                  { name: "Rang recruteur", value: roles(ranks.recruteur), inline: true },
-                  { name: "Parcours", value: `Attente du vocal : ${roles([DISCORD_ROLE_ATTENTE_WL])}\nWhitelisté : ${roles([DISCORD_ROLE_WL])}` },
-                ),
-            ],
-          },
-          { private: true },
-        );
-        return;
-      }
-      case "salon-logs": {
-        const channel = ctx.channelArg("salon");
-        if (channel && !channel.isSendable()) throw new UserError("Ce salon ne peut pas recevoir de messages.");
-        await updateSiteSettings(ctx.settings, { salonLogs: channel?.id });
-        await ctx.reply({ embeds: [notice(ctx.settings, channel ? `Logs staff envoyés dans ${channel}.` : "Salon de logs staff retiré.")] }, { private: true });
-        return;
-      }
-      case "resync": {
-        await ctx.defer({ private: true });
-        const result = await resync(ctx.guild, { refresh: true });
-        await ctx.reply(
-          {
-            embeds: [
-              notice(
-                ctx.settings,
-                `${result.accounts} compte(s) du site vérifié(s) parmi ${result.members} membre(s) du serveur : ${result.updated.length} présence(s) corrigée(s). Les rangs sont relus par le site.`,
-                "Resynchronisation terminée",
-              ),
-            ],
-          },
-          { private: true },
-        );
-        return;
-      }
-    }
+    await ctx.reply(await renderSitePanel({ settings: ctx.settings, owner: ctx.user.id }), { private: true });
   },
 });

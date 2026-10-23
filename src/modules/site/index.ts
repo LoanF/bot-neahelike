@@ -2,6 +2,7 @@ import type { BotModule } from "@/core/registry";
 import { candidature, fiche, site } from "./commands";
 import { resync, setupMemberSync } from "./events";
 import { startJournalRelay } from "./journal";
+import { candidaturePanel, sitePanel } from "./panel";
 import { MODULE } from "./settings";
 
 export const siteModule: BotModule = {
@@ -10,6 +11,7 @@ export const siteModule: BotModule = {
   icon: "🏛️",
   description: "Présence des comptes du site, statut de candidature, fiche staff et décisions du site dans les logs staff.",
   commands: [candidature, fiche, site],
+  components: [sitePanel, candidaturePanel],
   setup: setupMemberSync,
   onReady: async guild => {
     // Le relais démarre d'abord : un échec de la resynchronisation ne doit pas le priver de logs.
