@@ -233,6 +233,8 @@ Une reconnexion à Discord après une coupure relance la resynchronisation de la
 
 Toutes les commandes existent en `/` **et** avec le préfixe (`+` par défaut, réglable) : `/config` et `+config` font la même chose. Les alias ne marchent qu'avec le préfixe.
 
+Exceptions : `/casier`, `/blacklist` et `/fiche` n'existent **qu'en `/`**. Au préfixe, leur réponse s'afficherait dans le salon, visible de tous ; le bot retire alors le message tapé et renvoie vers la commande `/`, dont la réponse est privée.
+
 « Visible pour » est la **permission Discord par défaut** : une commande `/` n'apparaît que pour les membres qui l'ont (voir [Permissions et accès](#permissions-et-accès)). Les commandes marquées 🔒 sont des commandes de configuration : elles ne peuvent jamais être ouvertes à tout le monde.
 
 ### Général et configuration
@@ -256,9 +258,9 @@ Aucune de ces commandes n'a de sous-commande : chacune ouvre le panneau de confi
 | Commande | Rôle | Visible pour |
 |---|---|---|
 | `/candidature` | Où en est sa candidature (réponse privée), avec les boutons Ouvrir le portail, Actualiser et Comment ça marche | Tout le monde |
-| `/fiche <joueur>` | Compte du site, candidature, personnage, documents et décision d'un joueur, avec un lien vers sa fiche sur l'espace équipe (réponse privée) | Gérer les messages |
+| `/fiche <joueur>` (seulement en `/`) | Compte du site, candidature, personnage, documents et décision d'un joueur, avec un lien vers sa fiche sur l'espace équipe (réponse privée) | Gérer les messages |
 | `/site` 🔒 | Panneau : salon de logs staff (sélecteur), rôles des rangs et du parcours, resynchronisation de la présence | Gérer le serveur |
-| `/blacklist` (alias `bl`) 🔒 | Panneau de la blacklist partagée avec le site : blacklister (membre ou ID, raison facultative), liste paginée, levée. Réservé aux rangs **admin** et **owner** du site | Bannir des membres |
+| `/blacklist` (seulement en `/`) 🔒 | Panneau de la blacklist partagée avec le site : blacklister (membre ou ID, raison facultative), liste paginée, levée. Réservé aux rangs **admin** et **owner** du site | Bannir des membres |
 
 ### Accueil et vie du serveur
 
@@ -289,7 +291,7 @@ Aucune de ces commandes n'a de sous-commande : chacune ouvre le panneau de confi
 | `/ban <membre ou ID> [raison]` (alias `bannir`) | Bannissement définitif, même pour quelqu'un qui a quitté le serveur | Bannir des membres |
 | `/tempban <membre ou ID> <durée> [raison]` | Bannissement temporaire (un an au plus), levé automatiquement | Bannir des membres |
 | `/unban <ID> [raison]` (alias `debannir`) | Lève un bannissement | Bannir des membres |
-| `/casier [membre]` (alias `sanctions`) | Panneau du casier : choix du membre (ou ID saisi), sanctions, retrait d'une sanction depuis un menu | Exclure temporairement |
+| `/casier [membre]` (seulement en `/`) | Panneau du casier : choix du membre (ou ID saisi), sanctions, retrait d'une sanction depuis un menu | Exclure temporairement |
 | `/salon [salon]` (alias `salons`) | Panneau d'un salon : état pour @everyone, verrouiller, cacher, mode lent (menu), supprimer des messages, dernier message supprimé, recréer. Chaque bouton suit l'accès de sa commande | Gérer les salons |
 | `/clear <nombre> [membre]` (alias `purge`) | Supprime les derniers messages (100 au plus, de moins de 14 jours) | Gérer les messages |
 | `/snipe` | Dernier message supprimé du salon (10 minutes) | Gérer les messages |
@@ -355,7 +357,7 @@ Chaque module peut être désactivé dans `/config` › Modules, sauf **Généra
 ### Lien avec le site
 
 - **Présence** :
-  - le bot tient à jour en temps réel la présence des comptes du site sur le serveur (`users.in_guild`, pseudo, avatar) ;
+  - le bot tient à jour en temps réel la présence des comptes du site sur le serveur (`users.in_guild`) ; le pseudo et l'avatar suivent à chaque changement de rôles, arrivée ou resynchronisation ;
   - il écrit les événements `discord.rejoint` / `discord.quitte`, comme le site ;
   - quand les rôles d'un membre changent, il demande au site de relire son rang (voir [Le bot et le site](#le-bot-et-le-site)) ;
   - au démarrage et après une coupure, il compare tous les comptes du site aux membres du serveur et corrige les écarts ;
@@ -364,20 +366,23 @@ Chaque module peut être désactivé dans `/config` › Modules, sauf **Généra
   - brouillon ;
   - envoyée, avec sa date ;
   - modification demandée, avec les étapes et le commentaire ;
-  - entretien ;
+  - entretien : la **prochaine session de whitelist** choisie par le recruteur à la validation écrite (affichée à l'heure de chacun dans Discord), avec le rappel que les entretiens ont lieu pendant les sessions, quand l'équipe est disponible ;
   - whitelisté ;
-  - refusée, avec les motifs, le commentaire et la date à partir de laquelle il peut recandidater (3 mois, comme sur le site) ;
+  - refusée, avec les motifs, le commentaire et la date à partir de laquelle il peut recandidater (3 mois, comme sur le site) ; si un admin a levé ce délai, le joueur peut recandidater tout de suite ;
+  - délai gardé par le site après la suppression d'un ancien compte (`reapply_locks`) : la date à partir de laquelle il peut recandidater ;
   - whitelist retirée par un admin : comme sur le portail, l'ancienne candidature ne compte plus et le parcours repart de zéro.
 
   Boutons : **Ouvrir le portail**, **Actualiser** (relit le statut) et **Comment ça marche** (les étapes de la candidature).
 
   Le rôle « Magistrat (wl) » passe toujours en premier. Sans candidature, le bot se fie aux rôles du parcours.
-- `/fiche @joueur` : compte (rang, CGU, présence), candidature (statut, dates, relecteur, whitelist retirée), personnage, HRP, liens du background et du dossier, décision. Les notes de l'équipe restent sur le site.
+- `/fiche @joueur` : compte (rang, CGU, présence), candidature (statut, dates, relecteur, session de whitelist, délai levé, whitelist retirée), personnage, HRP, liens du background et du dossier, décision. Les notes de l'équipe restent sur le site.
 - **Logs staff** (`/site`) :
   - le bot lit le journal `events` du site toutes les 20 s ;
-  - il publie les candidatures envoyées ou renvoyées, validées, à modifier, refusées (avec les motifs), les entretiens validés, les candidatures effacées et les changements de rang ;
+  - il publie les candidatures envoyées ou renvoyées, validées, à modifier, refusées (avec les motifs), les entretiens validés, les candidatures effacées, les changements de rang, et les blacklists posées ou levées (depuis le site ou le bot) ;
   - chaque log a un bouton vers la fiche du joueur sur l'espace équipe ;
-  - la position de lecture est gardée en base : au premier démarrage, l'historique n'est pas republié.
+  - la position de lecture est gardée en base : au premier démarrage, l'historique n'est pas republié ;
+  - rien n'est perdu : si le salon refuse un envoi (coupure Discord, salon inaccessible), la lecture n'avance pas et l'événement est retenté au passage suivant ;
+  - les 2 dernières minutes sont relues à chaque passage : un événement que le site a validé après un plus récent est quand même relayé, une seule fois.
 
 ### Blacklist (`/blacklist`)
 
@@ -387,7 +392,8 @@ La blacklist est **partagée avec le site** (table `blacklist`, migration 0017 d
 - **Blacklister** : sélecteur de membre, ou « Saisir un ID » pour quelqu'un qui n'est pas sur le serveur ; raison facultative dans un formulaire. Le bot inscrit l'ID (`source = 'bot'`), envoie un message privé au membre, puis le bannit. Il refuse soi-même, un owner, un membre au rôle plus haut et un ID déjà blacklisté. Si le bannissement échoue, la ligne reste et le panneau le signale.
 - **Liste** : 10 personnes par page, la plus récente d'abord : nom du compte du site (ou ID), raison, date, auteur, origine (site ou Discord).
 - **Lever** : menu limité aux personnes de la page affichée, puis confirmation. La ligne est retirée et le bannissement levé.
-- **La table fait foi** : un débannissement à la main ne lève pas la blacklist. Si la personne revient sur le serveur, le bot la bannit de nouveau.
+- **La table fait foi** : un débannissement à la main ne lève pas la blacklist. Si la personne revient sur le serveur, le bot la bannit de nouveau et le signale dans le salon de logs staff ; s'il n'y arrive pas, une alerte y part pour que l'équipe la bannisse à la main.
+- **Tout ou rien** : la ligne de blacklist, le retrait de whitelist et l'événement du site sont écrits dans une seule transaction (de même pour la levée). Un échec en cours de route ne laisse rien à moitié.
 - **Journal du site** : `compte.blacklist` et `compte.blacklist_levee` (avec la raison), seulement si la personne a un compte sur le site (`events` pointe vers `users`).
 - **Whitelist retirée**, comme sur le site : si la dernière candidature est whitelistée, le bot y note le retrait (`whitelist_revoked_at`, raison `Blacklist`, auteur s'il a un compte). Après une levée, le joueur doit donc recandidater.
 
@@ -422,12 +428,14 @@ La blacklist est **partagée avec le site** (table `blacklist`, migration 0017 d
 - **Réglages** :
   - catégorie Discord où naissent les tickets ;
   - salon des transcriptions ;
-  - fermeture automatique : jamais, ou après 1 à 14 jours sans message ;
+  - fermeture automatique : jamais, ou après 1, 2, 3, 5, 7 ou 14 jours sans message ;
   - catégories de tickets, 20 au plus : nom, emoji, description, rôles de l'équipe, jusqu'à 5 questions posées à l'ouverture. Six sont proposées au départ : Support, Question whitelist, Plainte joueur, Plainte staff, Dossier de reprise, Partenariat.
 - **Panneau public** : un bouton par catégorie, mis à jour tout seul quand les catégories changent.
 - **Ouverture** : le joueur remplit le formulaire, un salon privé s'ouvre (lui et les rôles de la catégorie). Un seul ticket ouvert par catégorie et par membre, garanti par la base.
-- **Dans le ticket** : prendre en charge, ajouter ou retirer un membre, fermer (avec une raison), rouvrir, supprimer le salon.
-- **Fermeture** : transcription HTML envoyée dans le salon des transcriptions et gardée en base, salon verrouillé pour l'auteur, MP avec une note de satisfaction de 1 à 5.
+- **Dans le ticket** : prendre en charge (une seule personne, même avec deux clics simultanés), ajouter ou retirer un membre, fermer (avec une raison), rouvrir, supprimer le salon. `/ticket` affiche en privé l'état du ticket et ces boutons.
+- **Fermeture** : transcription HTML envoyée dans le salon des transcriptions et gardée en base, salon verrouillé pour l'auteur, MP avec une note de satisfaction de 1 à 5. Si les messages du ticket n'ont pas pu être lus, la fermeture est annulée : le ticket reste ouvert plutôt que d'enregistrer une transcription vide.
+- **Catégorie supprimée** : refusé tant qu'elle a des tickets ouverts (son équipe ne pourrait plus les gérer).
+- **Salon supprimé à la main** : le ticket est fermé en base, même si le bot était arrêté à ce moment (vérification au démarrage).
 - Chaque étape apparaît dans le log **Tickets**.
 
 ### Modération
@@ -441,7 +449,8 @@ La blacklist est **partagée avec le site** (table `blacklist`, migration 0017 d
   - retrait d'une sanction depuis le menu « Retirer une sanction » (sanctions non levées seulement), avec la raison dans un formulaire ;
   - chaque sanction a un numéro (#12), un auteur, une raison, une durée et un état (en cours, terminée, levée) ;
   - rien n'est jamais supprimé : une sanction retirée est marquée levée, avec qui et pourquoi ;
-  - retirer une sanction en cours la lève aussi sur Discord. Lever un bannissement demande la permission Bannir.
+  - retirer une sanction la lève aussi sur Discord : un bannissement non levé l'est même s'il est échu (sauf si un autre bannissement du membre est en vigueur) ; une exclusion que le bot ne peut pas lever n'est pas retirée du casier ;
+  - lever un bannissement demande la permission Bannir **ou** l'accès à `/unban` réglé dans `/config`.
 - **Bannissements temporaires** : levés automatiquement dans la minute qui suit leur échéance, sauf si un autre bannissement du membre est encore en vigueur.
 - **Logs** : bannissements, expulsions et exclusions arrivent dans les logs par le journal d'audit de Discord, avec l'auteur et la raison. Les avertissements ont leur propre type de log.
 - **Outils de salon** (`/salon` les regroupe dans un panneau ; les commandes restent disponibles) :
@@ -588,7 +597,7 @@ Le bot utilise **la base PostgreSQL du site**. **Le schéma et les migrations vi
 | `bot_giveaway_entries` | Participants (une ligne par participant) |
 | `bot_sanctions` | Casier : numéro, membre, auteur, type, raison, échéance, levée. Jamais supprimé |
 
-Tous les réglages des modules (accueil, vie du serveur, tickets, logs, lien avec le site) sont dans `bot_modules.settings`. Les tables propres aux modules (`bot_tickets`, `bot_giveaways`, `bot_giveaway_entries`, `bot_sanctions`) sont déclarées par ces modules : si l'une manque, seul son module est mis hors service.
+Tous les réglages des modules (accueil, vie du serveur, tickets, logs, lien avec le site, effacement des panneaux) sont dans `bot_modules.settings`. Une valeur invalide en base (édition à la main, schéma resserré depuis) n'emporte pas tout le réglage : seul le champ, ou l'élément de liste, en cause est ignoré et signalé dans les journaux. Les tables propres aux modules (`bot_tickets`, `bot_giveaways`, `bot_giveaway_entries`, `bot_sanctions`) sont déclarées par ces modules : si l'une manque, seul son module est mis hors service.
 
 ### Tables du site utilisées par le bot
 
@@ -596,9 +605,10 @@ Tous les réglages des modules (accueil, vie du serveur, tickets, logs, lien ave
 |---|---|
 | `users` | **Écrit** : présence (`in_guild`), pseudo, avatar, et `roles_synced_at = null` pour demander au site de relire le rang. **Jamais** `rank`, ni les CGU, ni aucune suppression |
 | `events` | **Lu** pour les logs staff. **Écrit** : `discord.rejoint`, `discord.quitte`, `compte.blacklist` et `compte.blacklist_levee` |
-| `applications` | **Lu** : `/candidature`, `/fiche`. **Écrit** : seulement le retrait de whitelist (`whitelist_revoked_*`) quand `/blacklist` vise un joueur whitelisté |
+| `applications` | **Lu** : `/candidature`, `/fiche` (dont la session de whitelist et le délai levé, migration 0019). **Écrit** : seulement le retrait de whitelist (`whitelist_revoked_*`) quand `/blacklist` vise un joueur whitelisté |
 | `blacklist` | **Lu et écrit** : `/blacklist` (ajout avec `source = 'bot'`, levée), nouveau bannissement d'un blacklisté qui revient |
-| `role_ranks` | **Lu** : `/site` (rôles qui donnent les rangs du site) |
+| `role_ranks` | **Lu** : `/site` (rôles qui donnent les rangs du site ; une ligne `joueur` ne donne aucun droit) |
+| `reapply_locks` | **Lu** : `/candidature` (délai de recandidature gardé après la suppression d'un ancien compte) |
 
 Toutes les tables ont la sécurité au niveau des lignes (RLS) activée sans règle : seul le propriétaire des tables (l'utilisateur de `DATABASE_URL`) y accède. Le bot doit donc se connecter **avec le même utilisateur que le site**.
 
@@ -656,7 +666,7 @@ Tous les textes envoyés par le bot se modifient **depuis Discord** : `/config` 
 | Clé | Texte |
 |---|---|
 | `permission.refusee`, `module.desactive`, `erreur.inattendue` | Messages système |
-| `candidature.lien`, `candidature.statut.*` (9 états) | `/candidature` |
+| `candidature.lien`, `candidature.statut.*` (10 états, dont `{session}` pour l'attente du vocal) | `/candidature` |
 | `accueil.bienvenue`, `accueil.bienvenue-mp`, `accueil.depart`, `accueil.reglement` | Accueil (aussi depuis `/accueil`) |
 | `tickets.panneau`, `tickets.bienvenue`, `tickets.fermeture-mp` | Tickets |
 | `moderation.mp` | Message privé au membre sanctionné |
@@ -696,7 +706,7 @@ pnpm test
 
 - **Aucun secret dans le dépôt** : tout passe par les variables d'environnement (`.env` est ignoré par git). Le token et l'adresse de la base ne sont jamais journalisés.
 - **Contrôle d'accès à chaque action** : commande `/`, préfixe, et chaque clic sur un composant. Un panneau n'obéit qu'à celui qui l'a ouvert.
-- **Hiérarchie des rôles** respectée pour toute sanction et tout retrait de sanction. Lever un bannissement demande la permission Bannir.
+- **Hiérarchie des rôles** respectée pour toute sanction et tout retrait de sanction. Lever un bannissement demande la permission Bannir ou l'accès à `/unban`.
 - **Distribution de rôles bornée** : le bot ne donne jamais un rôle qui porte des permissions de gestion ou de modération, ni un rôle au-dessus du sien. Il le revérifie au moment de le donner.
 - **Mentions maîtrisées** : jamais de `@everyone` ou `@here` involontaire. Les messages de logs ne notifient personne.
 - **Requêtes SQL paramétrées** partout. Le bot n'écrit dans les tables du site que la présence (`users`) et deux types d'événements.
@@ -710,7 +720,7 @@ pnpm test
 - [ ] **Application Discord** : intents privilégiés activés (Server Members, Message Content, Presence), bot invité avec les permissions (voir [Configurer l'application Discord](#configurer-lapplication-discord)), **rôle du bot placé au-dessus** des rôles qu'il gère et des rôles du parcours whitelist.
 - [ ] **Hébergement** : un processus Node 22 qui tourne en continu, redémarré automatiquement (PM2, systemd ou Docker), **une seule instance**.
 - [ ] **`.env`** : `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DATABASE_URL` (même base et même utilisateur que le site), `SITE_URL` (adresse de **production** du site), `DISCORD_ROLE_ATTENTE_WL`, `DISCORD_ROLE_WL`.
-- [ ] **Base** : migrations du site appliquées (au moins jusqu'à la `0017` : giveaways, casier et blacklist). Au démarrage, aucun module ne doit être signalé « hors service ».
+- [ ] **Base** : migrations du site appliquées (au moins jusqu'à la `0019` : giveaways, casier, blacklist, session de whitelist). Au démarrage, aucun module ne doit être signalé « hors service ».
 - [ ] **Serveur FiveM** (`/serveur` › Statut FiveM) :
   - remplacer les exemples par la vraie adresse `IP:port` (exemple : `51.75.12.34:30120`) et le vrai lien de connexion (exemple : `https://cfx.re/join/abc123`) ;
   - le port HTTP du serveur FiveM doit être joignable depuis l'hébergement du bot ;

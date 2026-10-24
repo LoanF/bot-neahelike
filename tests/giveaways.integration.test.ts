@@ -100,6 +100,28 @@ describe.skipIf(!url)("giveaways en base", async () => {
     expect(await sql()`select 1 from bot_giveaway_entries where giveaway_id = ${giveaway.id}`).toHaveLength(0);
   });
 
+  it("reporte le tirage si la liste des membres n'a pas pu être chargée : le giveaway reste en cours", async () => {
+    const { drawGiveaway } = await import("@/modules/giveaways/ui");
+    const { resetMembersLoading } = await import("@/core/members");
+    resetMembersLoading();
+    const giveaway = await create(-1000);
+    await store.toggleEntry(giveaway.id, "u1").catch(() => null);
+    const guild = {
+      id: GUILD,
+      members: {
+        cache: new Map(),
+        fetch: async () => {
+          throw new Error("Délai dépassé");
+        },
+      },
+      channels: { cache: new Map() },
+    } as never;
+    await expect(drawGiveaway(guild, giveaway)).rejects.toThrow("tirage est reporté");
+    expect((await store.giveawayById(giveaway.id))?.status).toBe("en_cours");
+    expect((await store.dueGiveaways(GUILD)).map(item => item.id)).toEqual([giveaway.id]);
+    resetMembersLoading();
+  });
+
   describe("publication depuis le panneau", async () => {
     const { publishGiveaway } = await import("@/modules/giveaways/actions");
     const { newDraft } = await import("@/modules/giveaways/logic");

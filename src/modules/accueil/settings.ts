@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { PermissionFlagsBits, type Role } from "discord.js";
 import { z } from "zod";
+import { parseModuleSettings } from "@/config/module-settings";
 import { setModuleSettings, type GuildSettings } from "@/config/store";
 import { UserError } from "@/core/errors";
 
@@ -49,8 +50,7 @@ export type WelcomeSettings = Omit<z.infer<typeof schema>, "autoroles" | "pannea
 
 /** Réglages de l'accueil ; une valeur invalide en base est ignorée plutôt que de bloquer le bot. */
 export function welcomeSettings(settings: GuildSettings): WelcomeSettings {
-  const parsed = schema.safeParse(settings.modules.get(MODULE)?.settings ?? {});
-  const data = parsed.success ? parsed.data : {};
+  const data = parseModuleSettings(MODULE, schema, settings.modules.get(MODULE)?.settings);
   return { ...data, autoroles: data.autoroles ?? [], panneaux: data.panneaux ?? [] };
 }
 

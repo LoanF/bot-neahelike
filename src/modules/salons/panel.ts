@@ -1,4 +1,4 @@
-import { ButtonStyle, ChannelSelectMenuBuilder, ChannelType, MessageFlags, type GuildMember } from "discord.js";
+import { ButtonStyle, ChannelSelectMenuBuilder, ChannelType, MessageFlags, type GuildBasedChannel, type GuildMember } from "discord.js";
 import { getSettings, type GuildSettings } from "@/config/store";
 import { canUse } from "@/core/access";
 import { customId, type ComponentHandler, type PanelInteraction } from "@/core/components";
@@ -118,7 +118,7 @@ export const salonPanel: ComponentHandler = {
     const pick = () => {
       if (action === "salon") {
         if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
-        return manageableChannel(guild, interaction.channels.first() as never);
+        return manageableChannel(guild, interaction.channels.first() as GuildBasedChannel | undefined);
       }
       return manageableChannel(guild, guild.channels.cache.get(args[0] ?? ""));
     };

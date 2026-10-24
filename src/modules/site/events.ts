@@ -16,8 +16,10 @@ async function sync(userId: string, member: MemberSnapshot | null, rolesChanged 
   }
 }
 
-/** Resynchronisation complète, journalisée. */
-/** `refresh` : recharger la liste des membres (après une coupure, ou à la demande) plutôt que se fier au cache. */
+/**
+ * Resynchronisation complète, journalisée.
+ * `refresh` : recharger la liste des membres (après une coupure, ou à la demande) plutôt que se fier au cache.
+ */
 export async function resync(guild: Guild, { refresh = false } = {}) {
   const started = Date.now();
   const result = await resyncGuild(guild, { refresh });

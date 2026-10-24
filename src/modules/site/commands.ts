@@ -24,6 +24,7 @@ export const candidature = defineCommand({
 
 export const fiche = defineCommand({
   name: "fiche",
+  slashOnly: true,
   description: "Fiche d'un joueur : compte du site, candidature et décision (réponse visible par toi seul).",
   module: MODULE,
   defaultPermission: PERMISSION.messages,

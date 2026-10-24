@@ -37,6 +37,9 @@ function refusal(settings: GuildSettings, member: GuildMember, command: CommandD
   return null;
 }
 
+/** Avis « utilise la commande / » effacé après ce délai. */
+const SLASH_ONLY_NOTICE_MS = 15 * 1000;
+
 async function run(ctx: CommandContext) {
   try {
     await ctx.command.run(ctx);
@@ -205,6 +208,14 @@ async function runPrefix(message: Message<true>) {
   const denied = refusal(settings, member, command);
   if (denied) {
     await reply(denied);
+    return;
+  }
+  if (command.slashOnly) {
+    const text = `Utilise \`/${command.name}\` : sa réponse n'est visible que de toi, alors qu'ici elle s'afficherait dans le salon.`;
+    const sent = await message.reply({ embeds: [failure(settings, text)], allowedMentions: { repliedUser: false } });
+    // Le message tapé peut déjà nommer un joueur : il est retiré, et l'avis aussi peu après.
+    await message.delete().catch(() => {});
+    setTimeout(() => void sent.delete().catch(() => {}), SLASH_ONLY_NOTICE_MS).unref();
     return;
   }
 

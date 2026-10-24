@@ -64,6 +64,16 @@ describe.skipIf(!url)("stockage de la configuration", async () => {
     expect(settings.config.activity_text).toBe("Veille sur Hélikè");
   });
 
+  it("ne garde pas en cache une lecture commencée avant une modification", async () => {
+    await store.updateConfig(GUILD, { prefix: "+" });
+    for (let round = 0; round < 5; round++) {
+      const reading = store.getSettings(GUILD);
+      await store.updateConfig(GUILD, { prefix: round % 2 ? "!" : "?" });
+      await reading;
+      expect((await store.getSettings(GUILD)).config.prefix).toBe(round % 2 ? "!" : "?");
+    }
+  });
+
   it("lie plusieurs rôles à un niveau et remplace la liste", async () => {
     const staffId = (await store.getSettings(GUILD)).levels.find(level => level.name === "Staff")!.id;
     const roles = async () => (await store.getSettings(GUILD)).levels.find(level => level.id === staffId)!.roleIds.sort();

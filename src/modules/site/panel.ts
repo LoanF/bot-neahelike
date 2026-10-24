@@ -8,7 +8,7 @@ import { renderMessage } from "@/core/messages";
 import { button, ICON, row, status } from "@/core/panels";
 import { sql } from "@/db";
 import { env } from "@/env";
-import { latestApplication, statusKey, statusVars, type Account } from "./applications";
+import { latestApplication, reapplyLock, statusKey, statusVars, type Account } from "./applications";
 import { resync } from "./events";
 import { roleRanks } from "./fiche";
 import { siteSettings, updateSiteSettings } from "./settings";
@@ -134,11 +134,11 @@ const CANDIDATURE_GUIDE =
 /** Statut de candidature, tel que le joueur le voit sur son tableau de bord. */
 export async function candidatureEmbed(settings: GuildSettings, userId: string, roles: Iterable<string>) {
   const [account] = await sql()<Account[]>`select cgu_accepted_at, rank from users where id = ${userId}`;
-  const application = account ? await latestApplication(userId) : undefined;
-  const key = statusKey(account, application, roles);
+  const [application, lock] = account ? await Promise.all([latestApplication(userId), reapplyLock(userId)]) : [undefined, null];
+  const key = statusKey(account, application, roles, new Date(), lock);
   const result = embed(settings)
     .setTitle("Ta candidature")
-    .setDescription(renderMessage(settings, key, statusVars(application, portalUrl())))
+    .setDescription(renderMessage(settings, key, statusVars(application, portalUrl(), lock)))
     .setFooter({ text: "Visible par toi seul" });
   return { embed: result, whitelisted: key === "candidature.statut.whiteliste" };
 }

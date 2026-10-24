@@ -4,6 +4,7 @@ import { customId, type ComponentHandler, type PanelInteraction } from "@/core/c
 import type { Payload } from "@/core/context";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
+import { logger } from "@/logger";
 import { button, choice, field, ICON, modal, row, status } from "@/core/panels";
 import { roleProblem } from "@/modules/accueil/settings";
 import { counterValues, lastFivemStatus, reconcileAllSupport, refreshFivem, statusPayload, updateCounters } from "./live";
@@ -337,7 +338,7 @@ async function handlePanel(prefix: string, interaction: PanelInteraction, { sett
     case "compteur": {
       if (!interaction.isChannelSelectMenu()) throw new Error("Menu de salons attendu.");
       const counter = args[0] as CounterId;
-      if (!(counter in COUNTERS)) throw new Error(`Compteur inconnu : ${counter}`);
+      if (!Object.hasOwn(COUNTERS, counter)) throw new Error(`Compteur inconnu : ${counter}`);
       const channelId = interaction.values[0];
       if (channelId) {
         const target = interaction.guild.channels.cache.get(channelId);
@@ -352,7 +353,7 @@ async function handlePanel(prefix: string, interaction: PanelInteraction, { sett
       const next = { ...server, compteurs };
       await saveServerSettings(settings, next);
       // Sans attendre : Discord peut faire patienter un renommage plusieurs minutes.
-      void updateCounters(interaction.guild, next).catch(() => {});
+      void updateCounters(interaction.guild, next).catch(error => logger.warn({ err: error }, "Mise à jour des compteurs impossible"));
       return show(interaction, prefix, "compteurs", channelId ? `${COUNTERS[counter].label} affiché dans <#${channelId}>.` : `${COUNTERS[counter].label} : compteur arrêté.`);
     }
     case "compteurs-noms":

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseModuleSettings } from "@/config/module-settings";
 import { getSettings, setModuleSettings, type GuildSettings } from "@/config/store";
 import { UserError } from "@/core/errors";
 import { renderTemplate } from "@/core/templates";
@@ -52,9 +53,7 @@ export type ServerSettings = z.infer<typeof schema>;
 export const DEFAULT_VOICE_NAME = "🔊 Vocal de {user.name}";
 
 export function serverSettings(settings: GuildSettings): ServerSettings {
-  const parsed = schema.safeParse(settings.modules.get(MODULE)?.settings ?? {});
-  if (!parsed.success) return {};
-  const { soutienTexte, ...data } = parsed.data;
+  const { soutienTexte, ...data } = parseModuleSettings(MODULE, schema, settings.modules.get(MODULE)?.settings);
   // Ancien texte unique : il devient le premier texte de la liste.
   return soutienTexte ? { ...data, soutienTextes: addSupportText(data.soutienTextes ?? [], soutienTexte) } : data;
 }

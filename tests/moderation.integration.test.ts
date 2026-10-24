@@ -24,14 +24,14 @@ describe.skipIf(!url)("casier de modération", async () => {
   const sanctions = await import("@/modules/moderation/store");
 
   /** Faux serveur Discord : garde la trace des appels, peut refuser une expulsion. */
-  function fakeGuild(options: { failKick?: boolean; targetTop?: number; canBan?: boolean } = {}) {
+  function fakeGuild(options: { failKick?: boolean; targetTop?: number; canBan?: boolean; moderatable?: boolean } = {}) {
     const calls: string[] = [];
     const banned = new Set<string>();
     const target = {
       id: TARGET,
       roles: { highest: { position: options.targetTop ?? 1 } },
       kickable: true,
-      moderatable: true,
+      moderatable: options.moderatable ?? true,
       bannable: true,
       kick: async () => {
         if (options.failKick) throw new Error("Missing Permissions");
@@ -62,7 +62,7 @@ describe.skipIf(!url)("casier de modération", async () => {
       },
       channels: { cache: new Map() },
     } as unknown as Guild;
-    const actor = { id: MOD, guild, user: { tag: "moderateur" }, roles: { highest: { position: 10 } }, permissions: { has: () => options.canBan ?? true } } as unknown as GuildMember;
+    const actor = { id: MOD, guild, user: { tag: "moderateur" }, roles: { highest: { position: 10 }, cache: new Map() }, permissions: { has: () => options.canBan ?? true } } as unknown as GuildMember;
     const user = { id: TARGET, tag: "cible", send: async () => calls.push("mp") } as unknown as User;
     return { guild, actor, user, calls, banned };
   }
@@ -190,8 +190,42 @@ describe.skipIf(!url)("casier de modération", async () => {
 
   it("annule l'action sur Discord si le casier ne peut pas l'inscrire", async () => {
     const { actor, user, banned, calls } = fakeGuild();
-    await expect(actions.sanction("bannissement", { actor, target: user, reason: null as never, durationMs: 60_000 })).rejects.toThrow("casier est indisponible");
+    await expect(actions.sanction("bannissement", { actor, target: user, reason: null as never, durationMs: 60_000 })).rejects.toThrow("la sanction a été annulée sur Discord");
     expect(banned.has(TARGET)).toBe(false);
     expect(calls).toContain(`unban:${TARGET}`);
+  });
+
+  it("dit la vérité quand une sanction non inscrite ne peut pas être annulée", async () => {
+    const kicked = fakeGuild();
+    await expect(actions.sanction("expulsion", { actor: kicked.actor, target: kicked.user, reason: null as never })).rejects.toThrow("a bien été expulsé");
+    const banning = fakeGuild();
+    // Le débannissement d'annulation est refusé par Discord.
+    (banning.guild.bans as unknown as { remove: () => Promise<never> }).remove = async () => {
+      throw new Error("Missing Permissions");
+    };
+    await expect(actions.sanction("bannissement", { actor: banning.actor, target: banning.user, reason: null as never })).rejects.toThrow("débannissez");
+  });
+
+  it("lève sur Discord un bannissement temporaire échu retiré du casier, sauf si un autre bannissement est en vigueur", async () => {
+    const { actor, user, banned } = fakeGuild();
+    const temp = await actions.sanction("bannissement", { actor, target: user, reason: "Temporaire", durationMs: 60_000 });
+    await sql()`update bot_sanctions set ends_at = now() - interval '1 second' where id = ${temp.id}`;
+    const expired = (await sanctions.sanctionByNumber(GUILD, temp.number))!;
+    await actions.removeSanction(actor, expired, "Erreur");
+    expect(banned.has(TARGET)).toBe(false);
+
+    const other = fakeGuild();
+    const temp2 = await actions.sanction("bannissement", { actor: other.actor, target: other.user, reason: "Temporaire", durationMs: 60_000 });
+    await sql()`insert into bot_sanctions (guild_id, user_id, moderator_id, type, reason) values (${GUILD}, ${TARGET}, ${MOD}, 'bannissement', 'Définitif')`;
+    await actions.removeSanction(other.actor, (await sanctions.sanctionByNumber(GUILD, temp2.number))!, "Erreur");
+    expect(other.banned.has(TARGET)).toBe(true);
+  });
+
+  it("refuse de retirer une exclusion que le bot ne peut pas lever, sans toucher au casier", async () => {
+    const { actor, user } = fakeGuild();
+    const timeout = await actions.sanction("exclusion", { actor, target: user, reason: "Flood", durationMs: 600_000 });
+    const stuck = fakeGuild({ moderatable: false });
+    await expect(actions.removeSanction(stuck.actor, timeout, "x")).rejects.toThrow("ne peut pas lever l'exclusion");
+    expect((await sanctions.sanctionByNumber(GUILD, timeout.number))?.revoked_at).toBeNull();
   });
 });

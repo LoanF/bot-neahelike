@@ -15,6 +15,7 @@ import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { button, choice, field, ICON, modal, row, status } from "@/core/panels";
 import { AUTO_CLOSE_CHOICES, cleanQuestions, findCategory, MAX_CATEGORIES, MAX_QUESTIONS, newCategoryId, saveTicketSettings, ticketSettings, type TicketCategory, type TicketSettings } from "./settings";
+import { countOpenInCategory } from "./store";
 import { publicPanel, refreshPublicPanel } from "./ui";
 
 const PREFIX = "tkc";
@@ -144,7 +145,7 @@ function deleteView(view: View, categoryId: string): Payload {
     embeds: [
       embed(view.settings, "bronze")
         .setTitle(`${ICON.attention} Supprimer la catégorie ${category.label} ?`)
-        .setDescription("Son bouton disparaît du panneau. Les tickets déjà ouverts restent ouverts et gardent leurs salons."),
+        .setDescription("Son bouton disparaît du panneau. La suppression est refusée tant que des tickets de cette catégorie sont ouverts : leur équipe ne pourrait plus les gérer."),
     ],
     components: [
       row(
@@ -318,6 +319,9 @@ export const ticketsPanel: ComponentHandler = {
       }
       case "suppr": {
         const category = findCategory(tickets, arg);
+        // Ses tickets ouverts ne seraient plus gérables par ses rôles (« l'équipe » d'un ticket vient de sa catégorie).
+        const open = await countOpenInCategory(interaction.guildId, category.id);
+        if (open > 0) throw new UserError(`La catégorie ${category.label} a encore ${open} ticket(s) ouvert(s) : fermez-les avant de la supprimer.`);
         return commit(interaction, settings, { ...tickets, categories: tickets.categories.filter(item => item.id !== category.id) }, "accueil", `Catégorie ${category.label} supprimée.`);
       }
 

@@ -86,4 +86,51 @@ describe.skipIf(!url)("tickets en base", async () => {
     expect(await store.inactiveTickets(GUILD, 3)).toEqual([]);
     expect((await store.openTicketChannels(GUILD)).sort()).toEqual(["700000000000000001", "700000000000000002"]);
   });
+
+  it("ne laisse qu'un membre de l'équipe prendre en charge, même avec deux clics simultanés", async () => {
+    const ticket = await open("700000000000000001");
+    const results = await Promise.all([store.claimTicket(ticket.id, "800000000000000001"), store.claimTicket(ticket.id, "800000000000000002")]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await store.claimTicket(ticket.id, "800000000000000003")).toBeUndefined();
+  });
+
+  it("compte les tickets ouverts d'une catégorie (suppression de la catégorie refusée tant qu'il y en a)", async () => {
+    const ticket = await open("700000000000000001");
+    await open("700000000000000002", "partenariat");
+    expect(await store.countOpenInCategory(GUILD, "support")).toBe(1);
+    await store.closeTicket(ticket.id, { closedById: "x", reason: null, transcript: "" });
+    expect(await store.countOpenInCategory(GUILD, "support")).toBe(0);
+  });
+
+  it("ferme en base le ticket dont le salon a disparu, seulement si Discord confirme qu'il n'existe plus", async () => {
+    const { DiscordAPIError, RESTJSONErrorCodes } = await import("discord.js");
+    const { channelGone, closeDeletedTicket } = await import("@/modules/tickets");
+    const unknown = new DiscordAPIError({ code: RESTJSONErrorCodes.UnknownChannel, message: "Unknown Channel" }, RESTJSONErrorCodes.UnknownChannel, 404, "GET", "/", {});
+    const guild = (fetch: () => Promise<unknown>) => ({ channels: { cache: new Map([["700000000000000009", {}]]), fetch } }) as never;
+    expect(await channelGone(guild(async () => ({})), "700000000000000009")).toBe(false);
+    expect(await channelGone(guild(async () => Promise.reject(unknown)), "700000000000000001")).toBe(true);
+    await expect(channelGone(guild(async () => Promise.reject(new Error("503"))), "700000000000000001")).rejects.toThrow("503");
+
+    const ticket = await open("700000000000000001");
+    await closeDeletedTicket("700000000000000001", "999999999999999999");
+    expect(await store.ticketByChannel("700000000000000001")).toMatchObject({ id: ticket.id, status: "ferme", close_reason: "Salon supprimé" });
+  });
+
+  it("ne ferme pas un ticket dont les messages n'ont pas pu être lus", async () => {
+    const { ensureGuild } = await import("@/config/store");
+    const { close } = await import("@/modules/tickets/actions");
+    await ensureGuild(GUILD);
+    const ticket = await open("700000000000000001");
+    const channel = {
+      id: "700000000000000001",
+      guild: { id: GUILD, name: "Néa Hélikè", members: { fetch: async () => Promise.reject(new Error("absent")) } },
+      messages: {
+        fetch: async () => {
+          throw new Error("Limite de Discord");
+        },
+      },
+    } as never;
+    await expect(close(channel, ticket, { id: "800000000000000001", tag: "staff" }, null)).rejects.toThrow("il reste ouvert");
+    expect((await store.ticketByChannel("700000000000000001"))?.status).toBe("ouvert");
+  });
 });

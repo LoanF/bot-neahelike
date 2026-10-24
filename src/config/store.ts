@@ -66,16 +66,22 @@ async function load(guildId: string): Promise<GuildSettings> {
   };
 }
 
+/** Génération des réglages de chaque serveur : un chargement commencé avant une modification ne remplit pas le cache. */
+const generations = new Map<string, number>();
+
 /** Configuration du serveur, mise en cache jusqu'à la prochaine modification. */
 export async function getSettings(guildId: string): Promise<GuildSettings> {
   const cached = cache.get(guildId);
   if (cached) return cached;
+  const generation = generations.get(guildId) ?? 0;
   const settings = await load(guildId);
-  cache.set(guildId, settings);
+  // Une modification pendant le chargement : ces lignes sont peut-être périmées, elles servent à cet appel seulement.
+  if ((generations.get(guildId) ?? 0) === generation) cache.set(guildId, settings);
   return settings;
 }
 
 function invalidate(guildId: string) {
+  generations.set(guildId, (generations.get(guildId) ?? 0) + 1);
   cache.delete(guildId);
 }
 

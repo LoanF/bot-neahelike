@@ -4,14 +4,16 @@ import { isModuleEnabled } from "@/core/access";
 import { defineCommand, PERMISSION } from "@/core/command";
 import type { BotModule } from "@/core/registry";
 import { env } from "@/env";
+import { embed } from "@/core/embeds";
 import { logger } from "@/logger";
+import { staffLog } from "@/modules/site/staff-log";
 import { enforceBlacklist } from "./actions";
 import { MODULE } from "./logic";
 import { blacklistPanel, openBlacklistPanel } from "./panel";
 
 const blacklist = defineCommand({
   name: "blacklist",
-  aliases: ["bl"],
+  slashOnly: true,
   description: "Ouvre le panneau de la blacklist partagée avec le site : blacklister, voir la liste, lever.",
   module: MODULE,
   defaultPermission: PERMISSION.bannissement,
@@ -28,9 +30,18 @@ function setup(client: Client) {
     try {
       const settings = await getSettings(member.guild.id);
       if (!isModuleEnabled(settings, MODULE)) return;
-      if (await enforceBlacklist(member.guild, member.id)) logger.info({ user: member.id }, "Blacklisté revenu sur le serveur : banni de nouveau");
+      if (await enforceBlacklist(member.guild, member.id)) {
+        logger.info({ user: member.id }, "Blacklisté revenu sur le serveur : banni de nouveau");
+        await staffLog(member.guild, settings => embed(settings, "bronze").setTitle("⛔ Blacklisté revenu").setDescription(`${member} (\`${member.id}\`) est revenu sur le serveur : il a été banni de nouveau.`));
+      }
     } catch (error) {
-      logger.error({ err: error }, "Vérification de la blacklist à l'arrivée impossible");
+      logger.error({ err: error, user: member.id }, "Vérification de la blacklist à l'arrivée impossible");
+      // Un blacklisté pourrait rester sur le serveur : l'équipe doit le savoir.
+      await staffLog(member.guild, settings =>
+        embed(settings, "bronze")
+          .setTitle("⚠️ Blacklist non appliquée")
+          .setDescription(`${member} (\`${member.id}\`) vient d'arriver et la blacklist n'a pas pu être vérifiée ou appliquée. Vérifiez avec \`/blacklist\` et bannissez-le à la main si besoin.`),
+      );
     }
   });
 }

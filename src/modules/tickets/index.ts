@@ -1,4 +1,4 @@
-import { ChannelType, Events, type Client, type Guild, type TextChannel } from "discord.js";
+import { ChannelType, DiscordAPIError, Events, RESTJSONErrorCodes, type Client, type Guild, type TextChannel } from "discord.js";
 import { getSettings } from "@/config/store";
 import { defineCommand, PERMISSION } from "@/core/command";
 import type { CommandContext } from "@/core/context";
@@ -67,17 +67,38 @@ function setup(client: Client) {
   client.on(Events.ChannelDelete, async channel => {
     if (channel.isDMBased() || channel.guildId !== guildId || !openChannels.has(channel.id)) return;
     openChannels.delete(channel.id);
-    const current = await ticketByChannel(channel.id).catch(() => undefined);
-    if (current?.status === "ouvert") {
-      await closeTicket(current.id, { closedById: client.user?.id ?? "", reason: "Salon supprimé", transcript: "" }).catch(error =>
-        logger.error({ err: error }, "Fermeture du ticket au salon supprimé impossible"),
-      );
-    }
+    await closeDeletedTicket(channel.id, client.user?.id ?? "").catch(error => logger.error({ err: error, channel: channel.id }, "Fermeture du ticket au salon supprimé impossible"));
   });
 }
 
+/** Ferme en base le ticket d'un salon supprimé, pour libérer la catégorie de son auteur. */
+export async function closeDeletedTicket(channelId: string, botId: string) {
+  const current = await ticketByChannel(channelId);
+  if (current?.status === "ouvert") await closeTicket(current.id, { closedById: botId, reason: "Salon supprimé", transcript: "" });
+}
+
+/** Le salon existe-t-il encore ? Seule une réponse « salon inconnu » vaut absence : une erreur passagère ne ferme rien. */
+export async function channelGone(guild: Guild, channelId: string): Promise<boolean> {
+  if (guild.channels.cache.has(channelId)) return false;
+  try {
+    await guild.channels.fetch(channelId);
+    return false;
+  } catch (error) {
+    if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownChannel) return true;
+    throw error;
+  }
+}
+
 async function onReady(guild: Guild) {
-  for (const channelId of await openTicketChannels(guild.id)) openChannels.add(channelId);
+  for (const channelId of await openTicketChannels(guild.id)) {
+    // Salon supprimé pendant que le bot était arrêté : l'événement a été manqué, le ticket est fermé maintenant.
+    const gone = await channelGone(guild, channelId).catch(error => {
+      logger.warn({ err: error, channel: channelId }, "Vérification du salon d'un ticket impossible");
+      return false;
+    });
+    if (gone) await closeDeletedTicket(channelId, guild.client.user.id).catch(error => logger.error({ err: error, channel: channelId }, "Fermeture d'un ticket sans salon impossible"));
+    else openChannels.add(channelId);
+  }
   const settings = await getSettings(guild.id);
   logger.info({ ouverts: openChannels.size, enabled: settings.modules.get(MODULE)?.enabled ?? true }, "Tickets chargés");
   const run = () => autoClose(guild).catch(error => logger.error({ err: error }, "Fermeture automatique des tickets impossible"));

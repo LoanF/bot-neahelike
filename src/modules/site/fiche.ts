@@ -3,7 +3,7 @@ import type { GuildSettings } from "@/config/store";
 import { embed } from "@/core/embeds";
 import { sql, type Tables } from "@/db";
 import { env } from "@/env";
-import type { Application } from "./applications";
+import { sessionText, type Application } from "./applications";
 import { AFFINITY_LABELS, CREATURE_LABELS, CRITERION_LABELS, DOSSIER_KIND_LABELS, label, labelList, STATUS_LABELS, STEP_LABELS } from "./labels";
 
 export type Profile = Pick<Tables<"users">, "id" | "username" | "global_name" | "rank" | "cgu_accepted_at" | "in_guild" | "created_at">;
@@ -75,6 +75,8 @@ export function ficheEmbed(settings: GuildSettings, profile: Profile, applicatio
     application.submitted_at && `Envoyée ${when(application.submitted_at)}`,
     application.viewed_at && `Lue ${when(application.viewed_at)}`,
     application.decided_at && `Décision ${when(application.decided_at)}${application.reviewer_id ? ` par <@${application.reviewer_id}>` : ""}`,
+    application.status === "entretien" && `Session de whitelist : ${sessionText(application)}`,
+    application.status === "refusee" && application.reapply_lifted_at && `Délai de recandidature levé ${when(application.reapply_lifted_at)}`,
     application.whitelist_revoked_at &&
       `**Whitelist retirée** ${when(application.whitelist_revoked_at)}${application.whitelist_revoked_by_id ? ` par <@${application.whitelist_revoked_by_id}>` : ""}${application.whitelist_revoke_reason ? ` : ${text(application.whitelist_revoke_reason, 300)}` : ""}`,
   ];

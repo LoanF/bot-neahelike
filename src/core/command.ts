@@ -61,6 +61,11 @@ export interface CommandDef {
   defaultPermission: bigint | null;
   /** Commande de configuration : ne peut jamais être ouverte à tout le monde. */
   protected?: boolean;
+  /**
+   * Réponse sensible (casier, blacklist, fiche d'un joueur) : en préfixe, elle s'afficherait dans le salon,
+   * visible de tous. La commande n'existe donc qu'en `/`, où la réponse est privée.
+   */
+  slashOnly?: boolean;
   options?: OptionDef[];
   subcommands?: SubcommandDef[];
   run: (ctx: CommandContext) => Promise<void>;

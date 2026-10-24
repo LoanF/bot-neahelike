@@ -1,8 +1,10 @@
 import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild, type GuildMember, type User } from "discord.js";
 import { getSettings } from "@/config/store";
+import { canUse } from "@/core/access";
 import { embed } from "@/core/embeds";
 import { UserError } from "@/core/errors";
 import { renderMessage } from "@/core/messages";
+import { getRegistry } from "@/core/registry";
 import { logger } from "@/logger";
 import { sendLog } from "@/modules/logs/events";
 import { warningEvent } from "@/modules/logs/format";
@@ -96,17 +98,32 @@ export async function sanction(type: SanctionType, input: SanctionInput): Promis
   try {
     recorded = await addSanction({ guildId: guild.id, userId: input.target.id, moderatorId: input.actor.id, type, reason: input.reason, endsAt });
   } catch (error) {
-    // Sans ligne au casier, un bannissement temporaire ne serait jamais levé : on annule l'action sur Discord.
-    if (type === "bannissement") await guild.bans.remove(input.target.id, "Casier indisponible : bannissement annulé").catch(() => {});
-    if (type === "exclusion") await member?.timeout(null, "Casier indisponible : exclusion annulée").catch(() => {});
-    logger.error({ err: error }, "Inscription au casier impossible");
-    throw new UserError("Le casier est indisponible : la sanction a été annulée sur Discord. Réessayez dans un instant.");
+    logger.error({ err: error, type, target: input.target.id }, "Inscription au casier impossible");
+    throw new UserError(await undoUnrecorded(guild, type, input.target, member));
   }
   // Les expulsions, bannissements et exclusions arrivent déjà dans les logs par le journal d'audit ; l'avertissement, lui, n'y passe pas.
   if (type === "avertissement") {
     await sendLog(guild, "avertissement", color => warningEvent(color, { number: recorded.number, userId: input.target.id, moderatorId: input.actor.id, reason: input.reason }));
   }
   return recorded;
+}
+
+/**
+ * Sanction appliquée sur Discord mais pas inscrite au casier. Un bannissement (temporaire : il ne serait jamais levé)
+ * ou une exclusion sont annulés ; une expulsion ou un avertissement ne peuvent pas l'être. Renvoie le message pour
+ * le modérateur, qui dit exactement ce qui reste à faire.
+ */
+async function undoUnrecorded(guild: Guild, type: SanctionType, target: User, member: GuildMember | null): Promise<string> {
+  if (type === "expulsion") return `${target} a bien été expulsé, mais le casier est indisponible : l'expulsion n'y est pas inscrite.`;
+  if (type === "avertissement") return `L'avertissement a été envoyé à ${target}, mais le casier est indisponible : il n'y est pas inscrit. Réessayez dans un instant.`;
+  try {
+    if (type === "bannissement") await guild.bans.remove(target.id, "Casier indisponible : bannissement annulé");
+    else await member?.timeout(null, "Casier indisponible : exclusion annulée");
+    return "Le casier est indisponible : la sanction a été annulée sur Discord. Réessayez dans un instant.";
+  } catch (error) {
+    logger.error({ err: error, type, target: target.id }, "Annulation d'une sanction non inscrite impossible");
+    return `Le casier est indisponible et la sanction n'a pas pu être annulée sur Discord : ${type === "bannissement" ? "débannissez" : "levez l'exclusion de"} ${target} à la main.`;
+  }
 }
 
 export async function isBanned(guild: Guild, userId: string): Promise<boolean> {
@@ -149,23 +166,35 @@ export async function endTimeout(actor: GuildMember, target: GuildMember, reason
 export async function removeSanction(actor: GuildMember, sanctionRow: Sanction, reason: string): Promise<Sanction> {
   const guild = actor.guild;
   const running = !sanctionRow.revoked_at && (!sanctionRow.ends_at || new Date(sanctionRow.ends_at) > new Date());
-  if (sanctionRow.type === "bannissement" && !actor.permissions.has(PermissionFlagsBits.BanMembers)) {
-    throw new UserError("Retirer un bannissement demande la permission « Bannir des membres ».");
+  if (sanctionRow.type === "bannissement" && !(await canLiftBans(actor))) {
+    throw new UserError("Retirer un bannissement demande la permission « Bannir des membres » ou l'accès à `/unban`.");
   }
   const member = await targetMember(guild, sanctionRow.user_id);
   checkHierarchy(actor, { id: sanctionRow.user_id }, member);
-  if (running && sanctionRow.type === "bannissement") {
+  // Un bannissement non levé l'est sur Discord, même échu : la levée automatique a pu ne pas passer encore (ou échouer).
+  // Sauf si un autre bannissement du membre est encore en vigueur.
+  if (sanctionRow.type === "bannissement" && !sanctionRow.revoked_at && !(await hasOtherActiveBan(guild.id, sanctionRow.user_id, sanctionRow.id))) {
     await guild.bans.remove(sanctionRow.user_id, reason).catch(error => {
       if (!(error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownBan)) throw error;
     });
   }
-  if (running && sanctionRow.type === "exclusion" && member?.isCommunicationDisabled() && member.moderatable) await member.timeout(null, reason);
+  if (running && sanctionRow.type === "exclusion" && member?.isCommunicationDisabled()) {
+    if (!member.moderatable) throw new UserError("Le bot ne peut pas lever l'exclusion de ce membre (rôle trop haut ou permission manquante) : rien n'a été retiré.");
+    await member.timeout(null, reason);
+  }
   const revoked = await revokeSanction(sanctionRow.id, actor.id, reason);
   if (!revoked) throw new UserError(`La sanction #${sanctionRow.number} est déjà levée.`);
   if (revoked.type === "avertissement") {
     await sendLog(guild, "avertissement", color => warningEvent(color, { number: revoked.number, userId: revoked.user_id, moderatorId: actor.id, reason, revoked: true }));
   }
   return revoked;
+}
+
+/** Lever un bannissement : permission Discord « Bannir », ou accès à `/unban` réglé dans `/config`. */
+async function canLiftBans(actor: GuildMember): Promise<boolean> {
+  if (actor.permissions.has(PermissionFlagsBits.BanMembers)) return true;
+  const unbanCommand = getRegistry().find("unban");
+  return Boolean(unbanCommand && canUse(await getSettings(actor.guild.id), actor, unbanCommand));
 }
 
 /** Lève les bannissements temporaires arrivés à échéance, sauf si un autre bannissement du membre est encore en vigueur. */

@@ -2,7 +2,7 @@ import { EmbedBuilder } from "discord.js";
 import type { GuildSettings } from "@/config/store";
 import { hexToInt } from "./args";
 
-/** Or pour l'essentiel, bronze pour les messages neutres (logs), parchemin en accent. */
+/** Or pour l'essentiel ; bronze pour les messages neutres ou sérieux (logs, sanctions, refus, blacklist) ; parchemin en accent (aide, détails). */
 export type Tone = "or" | "bronze" | "parchemin";
 
 export function embed(settings: GuildSettings, tone: Tone = "or"): EmbedBuilder {

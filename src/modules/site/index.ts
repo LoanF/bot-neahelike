@@ -79,7 +79,18 @@ export const siteModule: BotModule = {
       key: "candidature.statut.attente-vocal",
       module: MODULE,
       label: "Statut : candidature validée, attente du vocal",
-      defaultContent: "Ta candidature a été validée. Il te reste l'entretien vocal : les salons de whitelist te sont ouverts.",
+      defaultContent:
+        "Ta candidature écrite est validée : il te reste l'entretien vocal.\n\n" +
+        "**Prochaine session de whitelist :** {session}\n\n" +
+        "Les entretiens ont lieu pendant les sessions de whitelist, quand l'équipe est disponible : rejoins un salon d'attente vocal sur le Discord à ce moment-là pour passer le tien.",
+      variables: { "{session}": "date et heure de la prochaine session de whitelist" },
+    },
+    {
+      key: "candidature.statut.delai",
+      module: MODULE,
+      label: "Statut : délai avant une nouvelle candidature",
+      defaultContent: "Tu pourras déposer une nouvelle candidature à partir du {date}.",
+      variables: { "{date}": "date à partir de laquelle il peut recandidater" },
     },
     {
       key: "candidature.statut.whiteliste",

@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { parseModuleSettings } from "@/config/module-settings";
 import type { GuildSettings } from "@/config/store";
 import type { Payload } from "./context";
 
@@ -25,11 +27,19 @@ interface Tracked {
 
 const panels = new Map<string, Tracked>();
 
+/** Réglages du module « config » rangés dans `bot_modules.settings`. */
+export const configSettingsSchema = z.object({
+  /** Effacement des panneaux restés sans clic, en minutes (0 : jamais). */
+  panneauxMinutes: z.union(PANEL_TTL_CHOICES.map(minutes => z.literal(minutes))).optional(),
+});
+
+export function configSettings(settings: GuildSettings): z.infer<typeof configSettingsSchema> {
+  return parseModuleSettings("config", configSettingsSchema, settings.modules.get("config")?.settings);
+}
+
 /** Délai réglé pour le serveur, en millisecondes (0 : jamais). */
 export function panelTtlMs(settings: GuildSettings): number {
-  const value = (settings.modules.get("config")?.settings as { panneauxMinutes?: unknown } | undefined)?.panneauxMinutes;
-  const minutes = PANEL_TTL_CHOICES.includes(value as never) ? (value as number) : DEFAULT_PANEL_TTL_MINUTES;
-  return minutes * 60 * 1000;
+  return (configSettings(settings).panneauxMinutes ?? DEFAULT_PANEL_TTL_MINUTES) * 60 * 1000;
 }
 
 /** Une réponse est un panneau si elle porte au moins un bouton ou un menu (pas seulement des liens). */
